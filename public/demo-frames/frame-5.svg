@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="220" viewBox="0 0 2048 220">
+  <defs>
+    <linearGradient id="web5" x1="0" x2="1">
+      <stop offset="0" stop-color="#5b696e"/><stop offset="0.52" stop-color="#c1ccce"/><stop offset="1" stop-color="#536166"/>
+    </linearGradient>
+    <filter id="grain5"><feTurbulence type="fractalNoise" baseFrequency="0.024 0.18" numOctaves="2" seed="29"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 0.18"/></feComponentTransfer></filter>
+  </defs>
+  <rect width="2048" height="220" fill="#11191c"/>
+  <rect y="32" width="2048" height="156" fill="url(#web5)"/>
+  <rect y="32" width="2048" height="156" filter="url(#grain5)" opacity="0.7"/>
+  <path d="M0 70 C270 94 510 54 790 74 C1060 94 1320 58 1590 78 C1810 96 1940 70 2048 78" stroke="#edf5f6" stroke-width="2" opacity="0.24" fill="none"/>
+  <path d="M0 160 C340 134 560 176 850 154 C1140 130 1360 176 1640 154 C1850 136 1960 154 2048 146" stroke="#303b3f" stroke-width="4" opacity="0.42" fill="none"/>
+  <ellipse cx="940" cy="132" rx="124" ry="20" fill="#a64c48" opacity="0.22"/>
+  <path d="M910 108 L1032 152" stroke="#b44d49" stroke-width="7" opacity="0.56"/>
+  <rect x="1220" y="76" width="230" height="26" rx="7" fill="#f1c15d" opacity="0.18"/>
+</svg>

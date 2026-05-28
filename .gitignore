@@ -8,6 +8,10 @@ dist/
 build/
 out/
 coverage/
+artifacts/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
 
 # Python
 __pycache__/
@@ -39,4 +43,3 @@ temp/
 cache/
 *.sqlite
 *.db
-

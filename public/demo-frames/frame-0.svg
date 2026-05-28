@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="220" viewBox="0 0 2048 220">
+  <defs>
+    <linearGradient id="web0" x1="0" x2="1">
+      <stop offset="0" stop-color="#6a777b"/><stop offset="0.5" stop-color="#c4d0d2"/><stop offset="1" stop-color="#58656a"/>
+    </linearGradient>
+    <filter id="grain0"><feTurbulence type="fractalNoise" baseFrequency="0.018 0.18" numOctaves="2" seed="4"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 0.2"/></feComponentTransfer></filter>
+  </defs>
+  <rect width="2048" height="220" fill="#11191c"/>
+  <rect y="32" width="2048" height="156" fill="url(#web0)"/>
+  <rect y="32" width="2048" height="156" filter="url(#grain0)" opacity="0.7"/>
+  <path d="M0 74 C260 62 430 92 680 78 C960 58 1160 96 1450 80 C1690 66 1850 84 2048 76" stroke="#edf5f6" stroke-width="2" opacity="0.28" fill="none"/>
+  <path d="M0 150 C320 174 560 132 850 148 C1160 168 1360 136 1640 146 C1840 154 1950 140 2048 148" stroke="#273236" stroke-width="4" opacity="0.42" fill="none"/>
+  <ellipse cx="820" cy="116" rx="120" ry="20" fill="#a64c48" opacity="0.22"/>
+  <path d="M790 92 L915 140" stroke="#b44d49" stroke-width="6" opacity="0.58"/>
+  <rect x="1094" y="124" width="235" height="28" rx="7" fill="#f1c15d" opacity="0.2"/>
+</svg>
