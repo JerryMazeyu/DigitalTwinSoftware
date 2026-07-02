@@ -4,10 +4,12 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "node server/dev.mjs",
+    "dev:ui": "vite --host 127.0.0.1",
+    "api": "node server/monitor.mjs",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "vitest run",
+    "test": "vitest run src && node --test server/monitor.test.mjs server/model-assets.test.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {

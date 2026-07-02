@@ -1,9 +1,23 @@
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Activity, Gauge, RadioTower, ScanLine } from "lucide-react";
-import { useMemo, useRef } from "react";
+import { Canvas, extend, useFrame, useThree, type ReactThreeFiber } from "@react-three/fiber";
+import { Activity, Gauge, Layers3, RadioTower, ScanLine } from "lucide-react";
+import { Component, Suspense, useEffect, useMemo, useRef, useState, type PropsWithChildren, type ReactNode } from "react";
 import * as THREE from "three";
+import { OrbitControls as ThreeOrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+import { CoaterObjModel } from "./CoaterObjModel";
+import { coaterModelLayers, createAllLayerSelection, toggleLayerSelection, type CoaterModelLayerId } from "../domain/modelLayers";
 import type { MachineStatus, RiskLevel, SystemHealth } from "../domain/models";
+
+extend({ OrbitControls: ThreeOrbitControls });
+
+declare module "@react-three/fiber" {
+  interface ThreeElements {
+    orbitControls: ReactThreeFiber.Object3DNode<ThreeOrbitControls, typeof ThreeOrbitControls>;
+  }
+}
+
+const DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 1.05, 6.9];
+const DEFAULT_CAMERA_TARGET = new THREE.Vector3(0, 0.42, 0);
 
 type TwinMachine3DProps = {
   machine: MachineStatus;
@@ -17,6 +31,59 @@ const riskColor: Record<RiskLevel, string> = {
   warning: "#ff9f43",
   critical: "#ff5c5c"
 };
+
+
+class ModelErrorBoundary extends Component<PropsWithChildren<{ fallback: ReactNode }>, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
+function FreeCameraControls() {
+  const { camera, gl } = useThree();
+  const controls = useRef<ThreeOrbitControls>(null);
+
+  useEffect(() => {
+    camera.position.set(...DEFAULT_CAMERA_POSITION);
+    camera.lookAt(DEFAULT_CAMERA_TARGET);
+
+    if (controls.current) {
+      controls.current.target.copy(DEFAULT_CAMERA_TARGET);
+      controls.current.enableDamping = true;
+      controls.current.dampingFactor = 0.08;
+      controls.current.enablePan = true;
+      controls.current.enableZoom = true;
+      controls.current.rotateSpeed = 0.75;
+      controls.current.zoomSpeed = 0.9;
+      controls.current.panSpeed = 0.45;
+      controls.current.minDistance = 2.4;
+      controls.current.maxDistance = 9.2;
+      controls.current.minPolarAngle = Math.PI / 3.2;
+      controls.current.maxPolarAngle = Math.PI / 2.04;
+      controls.current.minAzimuthAngle = -Math.PI / 2.6;
+      controls.current.maxAzimuthAngle = Math.PI / 2.6;
+    }
+    controls.current?.update();
+  }, [camera]);
+
+  useFrame(() => {
+    controls.current?.update();
+  });
+
+  return (
+    <orbitControls
+      ref={controls}
+      args={[camera, gl.domElement]}
+    />
+  );
+}
 
 function Roller({
   position,
@@ -225,8 +292,63 @@ function MachineScene({ machine, riskLevel }: { machine: MachineStatus; riskLeve
   );
 }
 
+function ModelSceneEnvironment() {
+  return (
+    <>
+      <color attach="background" args={["#10171a"]} />
+      <ambientLight intensity={0.72} />
+      <directionalLight position={[4.8, 6.4, 5.2]} intensity={2.4} castShadow />
+      <pointLight position={[-2.4, 2.6, 2.1]} intensity={1.2} color="#5ad8c9" />
+      <pointLight position={[1.1, 2.2, 1.5]} intensity={0.75} color="#ffb23f" />
+      <gridHelper args={[8.5, 16, "#2d3a40", "#1b272c"]} position={[0, -0.45, 0]} />
+    </>
+  );
+}
+
+function ModelStatusLayer({ machine, riskLevel }: { machine: MachineStatus; riskLevel: RiskLevel }) {
+  const alertColor = riskColor[riskLevel];
+  const running = machine.status === "running" || machine.status === "warning";
+
+  return (
+    <group>
+      <mesh position={[1.82, 0.1, 0.78]}>
+        <boxGeometry args={[0.06, 0.06, 1.12]} />
+        <meshStandardMaterial color={alertColor} emissive={alertColor} emissiveIntensity={0.42} transparent opacity={0.86} />
+      </mesh>
+      <mesh position={[3.05, 1.18, -0.48]}>
+        <sphereGeometry args={[0.095, 24, 24]} />
+        <meshStandardMaterial color={alertColor} emissive={alertColor} emissiveIntensity={running ? 0.95 : 0.35} />
+      </mesh>
+      <mesh position={[-2.74, -0.34, 0]} receiveShadow>
+        <boxGeometry args={[1.32, 0.032, 1.06]} />
+        <meshStandardMaterial color="#c0d3d6" emissive="#16393b" emissiveIntensity={running ? 0.24 : 0.07} metalness={0.12} roughness={0.2} transparent opacity={0.72} />
+      </mesh>
+    </group>
+  );
+}
+
+function RealModelScene({
+  machine,
+  riskLevel,
+  visibleLayerIds
+}: {
+  machine: MachineStatus;
+  riskLevel: RiskLevel;
+  visibleLayerIds: CoaterModelLayerId[];
+}) {
+  return (
+    <>
+      <ModelSceneEnvironment />
+      <CoaterObjModel visibleLayerIds={visibleLayerIds} />
+      <ModelStatusLayer machine={machine} riskLevel={riskLevel} />
+    </>
+  );
+}
+
 export function TwinMachine3D({ machine, riskLevel, health }: TwinMachine3DProps) {
   const onlineCount = useMemo(() => health.filter((item) => item.online).length, [health]);
+  const [layerPanelOpen, setLayerPanelOpen] = useState(false);
+  const [visibleLayerIds, setVisibleLayerIds] = useState<CoaterModelLayerId[]>(() => createAllLayerSelection());
 
   return (
     <section className="panel machine-panel" aria-label="镀膜机三维数字孪生">
@@ -235,11 +357,46 @@ export function TwinMachine3D({ machine, riskLevel, health }: TwinMachine3DProps
           <h2>镀膜机 3D 数字孪生</h2>
           <p>放卷 - 张力辊 - 涂布腔 - 烘干 - 线扫检测 - 收卷</p>
         </div>
-        <span className={`risk-chip risk-${riskLevel}`}>{machine.status === "control-pending" ? "只读监控" : "设备联动"}</span>
+        <span className={`risk-chip risk-${riskLevel}`}>
+          {machine.status === "control-pending" ? "只读监控" : "设备联动"}
+        </span>
       </div>
       <div className="machine-canvas">
-        <Canvas camera={{ position: [4.45, 2.78, 4.35], fov: 32 }} shadows>
-          <MachineScene machine={machine} riskLevel={riskLevel} />
+        <div className="model-layer-control">
+          <button
+            className={layerPanelOpen ? "active" : ""}
+            type="button"
+            onClick={() => setLayerPanelOpen((open) => !open)}
+            title="显示或隐藏模型图层"
+          >
+            <Layers3 size={15} />
+            <span>图层</span>
+          </button>
+          {layerPanelOpen && (
+            <div className="model-layer-popover">
+              <div className="layer-actions">
+                <button type="button" onClick={() => setVisibleLayerIds(createAllLayerSelection())}>全部</button>
+              </div>
+              {coaterModelLayers.map((layer) => (
+                <label key={layer.id}>
+                  <input
+                    checked={visibleLayerIds.includes(layer.id)}
+                    type="checkbox"
+                    onChange={() => setVisibleLayerIds((current) => toggleLayerSelection(current, layer.id))}
+                  />
+                  <span>{layer.label}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+        <Canvas camera={{ position: DEFAULT_CAMERA_POSITION, fov: 30 }} shadows>
+          <FreeCameraControls />
+          <ModelErrorBoundary fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
+            <Suspense fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
+              <RealModelScene machine={machine} riskLevel={riskLevel} visibleLayerIds={visibleLayerIds} />
+            </Suspense>
+          </ModelErrorBoundary>
         </Canvas>
         <div className="machine-overlay">
           <div><Activity size={15} />线速 {machine.lineSpeed} m/min</div>
