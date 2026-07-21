@@ -23,6 +23,7 @@ type TwinMachine3DProps = {
   machine: MachineStatus;
   riskLevel: RiskLevel;
   health: SystemHealth[];
+  compact?: boolean;
 };
 
 const riskColor: Record<RiskLevel, string> = {
@@ -345,13 +346,13 @@ function RealModelScene({
   );
 }
 
-export function TwinMachine3D({ machine, riskLevel, health }: TwinMachine3DProps) {
+export function TwinMachine3D({ machine, riskLevel, health, compact = false }: TwinMachine3DProps) {
   const onlineCount = useMemo(() => health.filter((item) => item.online).length, [health]);
   const [layerPanelOpen, setLayerPanelOpen] = useState(false);
   const [visibleLayerIds, setVisibleLayerIds] = useState<CoaterModelLayerId[]>(() => createAllLayerSelection());
 
   return (
-    <section className="panel machine-panel" aria-label="镀膜机三维数字孪生">
+    <section className={compact ? "panel machine-panel machine-panel-fill" : "panel machine-panel"} aria-label="镀膜机三维数字孪生">
       <div className="panel-header">
         <div>
           <h2>镀膜机 3D 数字孪生</h2>
@@ -361,7 +362,7 @@ export function TwinMachine3D({ machine, riskLevel, health }: TwinMachine3DProps
           {machine.status === "control-pending" ? "只读监控" : "设备联动"}
         </span>
       </div>
-      <div className="machine-canvas">
+      <div className={compact ? "machine-canvas machine-canvas-fill" : "machine-canvas"}>
         <div className="model-layer-control">
           <button
             className={layerPanelOpen ? "active" : ""}

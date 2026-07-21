@@ -8,6 +8,8 @@ import {
   isLongStripImageSize,
   isReadyJob,
   jobKey,
+  resultLevelTone,
+  statusLabel,
   type CoatingJob
 } from "./coatingJobs";
 
@@ -38,6 +40,22 @@ describe("coating job helpers", () => {
     expect(formatScore(0.29403626918792725)).toBe("0.294");
     expect(formatVoltage(-0.29)).toBe("-0.290");
     expect(formatScore()).toBe("-");
+  });
+
+  it("labels pending jobs as waiting or processing without incomplete wording", () => {
+    expect(statusLabel["waiting-execution"]).toBe("等待执行");
+    expect(statusLabel.processing).toBe("处理中");
+    expect(statusLabel.incomplete).toBe("处理中");
+    expect(Object.values(statusLabel)).not.toContain("文件不完整");
+  });
+
+  it("classifies normal and abnormal result text for shared styling", () => {
+    expect(resultLevelTone("很可能正常")).toBe("normal");
+    expect(resultLevelTone("很可能异常")).toBe("abnormal");
+    expect(resultLevelTone("very likely normal")).toBe("normal");
+    expect(resultLevelTone("very likely abnormal")).toBe("abnormal");
+    expect(resultLevelTone("很可能预测正确")).toBe("unknown");
+    expect(resultLevelTone()).toBe("unknown");
   });
 
   it("finds output images by task type", () => {

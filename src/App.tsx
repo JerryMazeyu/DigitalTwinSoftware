@@ -6,6 +6,7 @@ import {
   FileJson,
   FolderSearch,
   Gauge,
+  GripVertical,
   Image as ImageIcon,
   Layers3,
   Radio,
@@ -14,7 +15,7 @@ import {
   Server,
   Sparkles
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { API_BASE } from "./api/coatingApi";
 import { TwinMachine3D } from "./components/TwinMachine3D";
@@ -29,12 +30,14 @@ import {
   isLongStripImageSize,
   isReadyJob,
   jobKey,
+  resultLevelTone,
   statusLabel,
   type ApiFile,
   type CoatingJob,
   type InspectionType
 } from "./domain/coatingJobs";
 import { riskLevelFromScore, type MachineStatus, type RiskLevel, type SystemHealth } from "./domain/models";
+import { DESKTOP_SPLIT_BOUNDS, ratioFromDrag, splitGridTemplateRows } from "./domain/resizableSplit";
 import { useCoatingMonitor } from "./hooks/useCoatingMonitor";
 
 type FilterType = "all" | InspectionType;
@@ -51,6 +54,9 @@ const typeTone: Record<InspectionType, string> = {
   anomaly: "danger",
   trend: "success"
 };
+
+const resultToneClass = (level?: string) => `result-level ${resultLevelTone(level)}`;
+const resultChipClass = (level?: string) => `result-chip ${resultLevelTone(level)}`;
 
 const jsonPreview = (value: unknown) => JSON.stringify(value ?? {}, null, 2);
 
@@ -168,7 +174,7 @@ const JobCard = ({ job, active, onSelect }: { job: CoatingJob; active: boolean; 
         <span><ImageIcon size={13} />输入 {job.inputImages.length}</span>
       </div>
       <div className="job-card-bottom">
-        <span>{job.summary.level || "等待结果"}</span>
+        <span className={resultToneClass(job.summary.level)}>{job.summary.level || "等待结果"}</span>
         {typeof job.summary.score === "number" ? <b>{formatScore(job.summary.score)}</b> : <b>{job.summary.sourceImageCount ?? "-"}</b>}
       </div>
     </button>
@@ -185,7 +191,11 @@ const SummaryPanel = ({ job }: { job: CoatingJob }) => {
           <h2>结果摘要</h2>
           <p>{inspectionTypeLabel[job.type]} / {job.id}</p>
         </div>
-        <span className={`type-chip ${typeTone[job.type]}`}>{job.summary.level || statusLabel[job.status]}</span>
+        {job.summary.level ? (
+          <span className={resultChipClass(job.summary.level)}>{job.summary.level}</span>
+        ) : (
+          <span className={`status-dot ${job.status}`}>{statusLabel[job.status]}</span>
+        )}
       </div>
 
       <div className="metric-grid">
@@ -216,7 +226,7 @@ const SummaryPanel = ({ job }: { job: CoatingJob }) => {
         </div>
       ) : (
         <div className="detail-list">
-          <div><span>预测等级</span><strong>{job.summary.level || "-"}</strong></div>
+          <div><span>预测等级</span><strong className={resultToneClass(job.summary.level)}>{job.summary.level || "-"}</strong></div>
           <div><span>输入图片</span><strong>{job.inputImages.map((file) => file.name).join(", ")}</strong></div>
         </div>
       )}
@@ -373,7 +383,9 @@ const CropTable = ({ job }: { job: CoatingJob }) => {
             <div className="crop-row" key={`${crop?.crop_id ?? index}-${index}`}>
               <span>#{crop?.crop_id ?? index}</span>
               <strong>{formatScore(Number(crop?.sample_score ?? 0))}</strong>
-              <em>{typeof crop?.anomaly_level === "string" ? crop.anomaly_level : "-"}</em>
+              <em className={resultToneClass(typeof crop?.anomaly_level === "string" ? crop.anomaly_level : undefined)}>
+                {typeof crop?.anomaly_level === "string" ? crop.anomaly_level : "-"}
+              </em>
             </div>
           ))}
       </div>
@@ -408,6 +420,10 @@ export function App() {
   const [filter, setFilter] = useState<FilterType>("all");
   const [query, setQuery] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [detailSplitRatio, setDetailSplitRatio] = useState<number>(DESKTOP_SPLIT_BOUNDS.defaultRatio);
+  const [splitDragging, setSplitDragging] = useState(false);
+  const splitShellRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ startY: number; startRatio: number; containerHeight: number } | null>(null);
 
   const filteredJobs = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -429,6 +445,61 @@ export function App() {
   useEffect(() => {
     if (selectedJob) setSelectedKey(jobKey(selectedJob));
   }, [selectedJob?.id, selectedJob?.type]);
+
+  useEffect(() => {
+    if (!splitDragging) return;
+
+    const stopDrag = () => {
+      dragStartRef.current = null;
+      setSplitDragging(false);
+      document.body.classList.remove("split-dragging");
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    const onMove = (event: PointerEvent) => {
+      const drag = dragStartRef.current;
+      if (!drag) return;
+      setDetailSplitRatio(ratioFromDrag({
+        startRatio: drag.startRatio,
+        deltaY: event.clientY - drag.startY,
+        containerHeight: drag.containerHeight
+      }));
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", stopDrag);
+    window.addEventListener("pointercancel", stopDrag);
+
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", stopDrag);
+      window.removeEventListener("pointercancel", stopDrag);
+      document.body.classList.remove("split-dragging");
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [splitDragging]);
+
+  const startDetailResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return;
+    const shell = splitShellRef.current;
+    if (!shell) return;
+    const rect = shell.getBoundingClientRect();
+    if (rect.height <= 0) return;
+
+    dragStartRef.current = {
+      startY: event.clientY,
+      startRatio: detailSplitRatio,
+      containerHeight: rect.height
+    };
+    setSplitDragging(true);
+    document.body.classList.add("split-dragging");
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  };
 
   const readyJobs = jobs.filter(isReadyJob).length;
   const primaryInput = selectedJob ? getPrimaryInputImage(selectedJob) : undefined;
@@ -513,25 +584,49 @@ export function App() {
 
         {selectedJob ? (
           <section className="detail-workspace">
-            <TwinMachine3D machine={machineStatus} riskLevel={riskLevel} health={systemHealth} />
+            <div
+              className="detail-resize-shell"
+              ref={splitShellRef}
+              style={{ gridTemplateRows: splitGridTemplateRows(detailSplitRatio) }}
+            >
+              <section className="detail-pane detail-pane-machine">
+                <TwinMachine3D compact machine={machineStatus} riskLevel={riskLevel} health={systemHealth} />
+              </section>
 
-            <div className="selected-banner">
-              <div>
-                <span className={`type-chip ${typeTone[selectedJob.type]}`}>{inspectionTypeLabel[selectedJob.type]}</span>
-                <h2>{selectedJob.id}</h2>
-                <p>输入图：{primaryInput?.name || "-"} / 输出文件：{selectedJob.outputFiles.length}</p>
-              </div>
-              <div className="banner-metrics">
-                <div><Gauge size={16} />{selectedJob.summary.level || statusLabel[selectedJob.status]}</div>
-                <div><RefreshCw size={16} />{formatTime(selectedJob.updatedAt)}</div>
-              </div>
-            </div>
+              <button
+                className={splitDragging ? "split-handle dragging" : "split-handle"}
+                type="button"
+                aria-label="调整上方 3D 视图和下方结果区域比例"
+                onPointerDown={startDetailResize}
+              >
+                <GripVertical size={16} />
+              </button>
 
-            <div className="detail-grid">
-              <ImageExplorer job={selectedJob} />
-              <SummaryPanel job={selectedJob} />
-              <CropTable job={selectedJob} />
-              <JsonPanel job={selectedJob} />
+              <section className="detail-pane detail-pane-results">
+                <div className="selected-banner">
+                  <div>
+                    <span className={`type-chip ${typeTone[selectedJob.type]}`}>{inspectionTypeLabel[selectedJob.type]}</span>
+                    <h2>{selectedJob.id}</h2>
+                    <p>输入图：{primaryInput?.name || "-"} / 输出文件：{selectedJob.outputFiles.length}</p>
+                  </div>
+                  <div className="banner-metrics">
+                    <div>
+                      <Gauge size={16} />
+                      <span className={resultToneClass(selectedJob.summary.level)}>
+                        {selectedJob.summary.level || statusLabel[selectedJob.status]}
+                      </span>
+                    </div>
+                    <div><RefreshCw size={16} />{formatTime(selectedJob.updatedAt)}</div>
+                  </div>
+                </div>
+
+                <div className="detail-grid">
+                  <ImageExplorer job={selectedJob} />
+                  <SummaryPanel job={selectedJob} />
+                  <CropTable job={selectedJob} />
+                  <JsonPanel job={selectedJob} />
+                </div>
+              </section>
             </div>
           </section>
         ) : (

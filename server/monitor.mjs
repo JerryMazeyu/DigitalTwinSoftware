@@ -146,15 +146,19 @@ const scanJob = async (config, type, id, inputDirReady, outputDirReady) => {
   if (type === "anomaly" && outputDirReady && !heatmap) missing.push("heatmap");
 
   const hasInvalidJson = Boolean((requestFile && !request) || (resultFile && !result));
+  const hasInputReady = inputDirReady && inputImages.length > 0;
+  const hasOutputReady = Boolean(
+    outputDirReady &&
+    resultFile &&
+    (type === "trend" ? prediction : anomalyMap && heatmap)
+  );
   const status = hasInvalidJson
     ? "invalid"
-    : !inputDirReady
-      ? "waiting-input"
-      : !outputDirReady
-        ? "waiting-output"
-        : missing.length > 0
-          ? "incomplete"
-          : "ready";
+    : !hasInputReady || !outputDirReady
+      ? "waiting-execution"
+      : !hasOutputReady
+        ? "processing"
+        : "ready";
 
   const allFiles = [...inputFiles, ...outputFiles];
   const updatedAt = allFiles

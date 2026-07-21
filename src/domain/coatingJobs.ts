@@ -1,6 +1,13 @@
 export type InspectionType = "anomaly" | "trend";
 
-export type JobStatus = "ready" | "waiting-input" | "waiting-output" | "incomplete" | "invalid";
+export type JobStatus =
+  | "ready"
+  | "waiting-execution"
+  | "processing"
+  | "waiting-input"
+  | "waiting-output"
+  | "incomplete"
+  | "invalid";
 
 export type FileRole =
   | "input-image"
@@ -81,10 +88,22 @@ export const inspectionTypeLabel: Record<InspectionType, string> = {
 
 export const statusLabel: Record<JobStatus, string> = {
   ready: "已就绪",
-  "waiting-input": "等待输入",
-  "waiting-output": "等待输出",
-  incomplete: "文件不完整",
+  "waiting-execution": "等待执行",
+  processing: "处理中",
+  "waiting-input": "等待执行",
+  "waiting-output": "等待执行",
+  incomplete: "处理中",
   invalid: "解析异常"
+};
+
+export type ResultLevelTone = "normal" | "abnormal" | "unknown";
+
+export const resultLevelTone = (level?: string): ResultLevelTone => {
+  const normalized = typeof level === "string" ? level.trim().toLowerCase() : "";
+  if (!normalized) return "unknown";
+  if (normalized.includes("异常") || normalized.includes("abnormal")) return "abnormal";
+  if (normalized.includes("正常") || normalized.includes("normal")) return "normal";
+  return "unknown";
 };
 
 export const jobKey = (job: Pick<CoatingJob, "type" | "id">) => `${job.type}:${job.id}`;

@@ -70,3 +70,45 @@ test("scanCoatingJobs pairs trend and anomaly input/output folders", async () =>
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("scanCoatingJobs treats partially written output as processing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "coating-monitor-"));
+  try {
+    const anomalyId = "20260512_160924_6d7b83de";
+
+    await mkdir(join(root, "anomaly_api", "input", anomalyId), { recursive: true });
+    await mkdir(join(root, "anomaly_api", "output", anomalyId), { recursive: true });
+    await makeFile(join(root, "anomaly_api", "input", anomalyId, `${anomalyId}.jpg`));
+    await makeFile(join(root, "anomaly_api", "input", anomalyId, "request.json"), JSON.stringify({
+      process_id: anomalyId,
+      image_type: "very long",
+      source_image: "source.jpg"
+    }));
+
+    const payload = await scanCoatingJobs({ dataRoot: root, scanIntervalMs: 1000, maxJobs: 10 });
+    const anomaly = payload.jobs.find((job) => job.type === "anomaly");
+
+    assert.equal(anomaly.status, "processing");
+    assert.deepEqual(anomaly.missing, ["result json", "anomaly map", "heatmap"]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("scanCoatingJobs treats missing output as waiting for execution", async () => {
+  const root = await mkdtemp(join(tmpdir(), "coating-monitor-"));
+  try {
+    const trendId = "20260512_160447_7e7daf5d";
+
+    await mkdir(join(root, "trend_api", "input", trendId), { recursive: true });
+    await makeFile(join(root, "trend_api", "input", trendId, "00.jpg"));
+
+    const payload = await scanCoatingJobs({ dataRoot: root, scanIntervalMs: 1000, maxJobs: 10 });
+    const trend = payload.jobs.find((job) => job.type === "trend");
+
+    assert.equal(trend.status, "waiting-execution");
+    assert.deepEqual(trend.missing, ["output directory"]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

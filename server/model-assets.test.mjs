@@ -36,5 +36,17 @@ test("generated coater layer mesh map matches OBJ group sections", () => {
     }
   }
 
-  assert.deepEqual(coaterModelLayerMeshes, layers);
+  const normalizedLayers = Object.fromEntries(Object.keys(layers).map((layer) => [layer, []]));
+  const assignedMeshes = new Set();
+
+  // The OBJ repeats a few object names under multiple top-level groups; runtime name lookup uses the later layer.
+  for (const layer of Object.keys(layers).reverse()) {
+    for (const name of [...layers[layer]].reverse()) {
+      if (assignedMeshes.has(name)) continue;
+      normalizedLayers[layer].unshift(name);
+      assignedMeshes.add(name);
+    }
+  }
+
+  assert.deepEqual(coaterModelLayerMeshes, normalizedLayers);
 });
