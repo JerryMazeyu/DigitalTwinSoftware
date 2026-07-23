@@ -582,58 +582,58 @@ export function App() {
           </div>
         </aside>
 
-        {selectedJob ? (
-          <section className="detail-workspace">
-            <div
-              className="detail-resize-shell"
-              ref={splitShellRef}
-              style={{ gridTemplateRows: splitGridTemplateRows(detailSplitRatio) }}
+        <section className="detail-workspace">
+          <div
+            className="detail-resize-shell"
+            ref={splitShellRef}
+            style={{ gridTemplateRows: splitGridTemplateRows(detailSplitRatio) }}
+          >
+            <section className="detail-pane detail-pane-machine">
+              <TwinMachine3D compact machine={machineStatus} riskLevel={riskLevel} health={systemHealth} />
+            </section>
+
+            <button
+              className={splitDragging ? "split-handle dragging" : "split-handle"}
+              type="button"
+              aria-label="调整上方 3D 视图和下方结果区域比例"
+              onPointerDown={startDetailResize}
             >
-              <section className="detail-pane detail-pane-machine">
-                <TwinMachine3D compact machine={machineStatus} riskLevel={riskLevel} health={systemHealth} />
-              </section>
+              <GripVertical size={16} />
+            </button>
 
-              <button
-                className={splitDragging ? "split-handle dragging" : "split-handle"}
-                type="button"
-                aria-label="调整上方 3D 视图和下方结果区域比例"
-                onPointerDown={startDetailResize}
-              >
-                <GripVertical size={16} />
-              </button>
-
-              <section className="detail-pane detail-pane-results">
-                <div className="selected-banner">
-                  <div>
-                    <span className={`type-chip ${typeTone[selectedJob.type]}`}>{inspectionTypeLabel[selectedJob.type]}</span>
-                    <h2>{selectedJob.id}</h2>
-                    <p>输入图：{primaryInput?.name || "-"} / 输出文件：{selectedJob.outputFiles.length}</p>
-                  </div>
-                  <div className="banner-metrics">
+            <section className="detail-pane detail-pane-results">
+              {selectedJob ? (
+                <>
+                  <div className="selected-banner">
                     <div>
-                      <Gauge size={16} />
-                      <span className={resultToneClass(selectedJob.summary.level)}>
-                        {selectedJob.summary.level || statusLabel[selectedJob.status]}
-                      </span>
+                      <span className={`type-chip ${typeTone[selectedJob.type]}`}>{inspectionTypeLabel[selectedJob.type]}</span>
+                      <h2>{selectedJob.id}</h2>
+                      <p>输入图：{primaryInput?.name || "-"} / 输出文件：{selectedJob.outputFiles.length}</p>
                     </div>
-                    <div><RefreshCw size={16} />{formatTime(selectedJob.updatedAt)}</div>
+                    <div className="banner-metrics">
+                      <div>
+                        <Gauge size={16} />
+                        <span className={resultToneClass(selectedJob.summary.level)}>
+                          {selectedJob.summary.level || statusLabel[selectedJob.status]}
+                        </span>
+                      </div>
+                      <div><RefreshCw size={16} />{formatTime(selectedJob.updatedAt)}</div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="detail-grid">
-                  <ImageExplorer job={selectedJob} />
-                  <SummaryPanel job={selectedJob} />
-                  <CropTable job={selectedJob} />
-                  <JsonPanel job={selectedJob} />
-                </div>
-              </section>
-            </div>
-          </section>
-        ) : (
-          <section className="detail-workspace">
-            <EmptyState title="没有可展示的数据" detail="请确认 P:\\trend_api 和 P:\\anomaly_api 下存在配对的 input/output 文件夹" />
-          </section>
-        )}
+                  <div className="detail-grid">
+                    <ImageExplorer job={selectedJob} />
+                    <SummaryPanel job={selectedJob} />
+                    <CropTable job={selectedJob} />
+                    <JsonPanel job={selectedJob} />
+                  </div>
+                </>
+              ) : (
+                <EmptyState title="没有可展示的数据" detail="请确认 P:\\trend_api 和 P:\\anomaly_api 下存在配对的 input/output 文件夹" />
+              )}
+            </section>
+          </div>
+        </section>
       </main>
     </div>
   );

@@ -16,8 +16,8 @@ declare module "@react-three/fiber" {
   }
 }
 
-const DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 1.05, 6.9];
-const DEFAULT_CAMERA_TARGET = new THREE.Vector3(0, 0.42, 0);
+const DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 0.72, 12];
+const DEFAULT_CAMERA_TARGET = new THREE.Vector3(0, 0.72, 0);
 
 type TwinMachine3DProps = {
   machine: MachineStatus;
