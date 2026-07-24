@@ -18,6 +18,7 @@ import {
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { API_BASE } from "./api/coatingApi";
+import { SensorBoard } from "./components/sensorBoard/SensorBoard";
 import { TwinMachine3D } from "./components/TwinMachine3D";
 import {
   formatScore,
@@ -42,6 +43,12 @@ import { useCoatingMonitor } from "./hooks/useCoatingMonitor";
 
 type FilterType = "all" | InspectionType;
 type ImageMode = "input" | "output";
+type AppTabKey = "machine" | "sensor";
+
+const appTabs: Array<{ key: AppTabKey; label: string }> = [
+  { key: "machine", label: "3D 数字孪生" },
+  { key: "sensor", label: "PLC 传感器看板" }
+];
 
 const connectionText = {
   connecting: "连接中",
@@ -422,6 +429,7 @@ export function App() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [detailSplitRatio, setDetailSplitRatio] = useState<number>(DESKTOP_SPLIT_BOUNDS.defaultRatio);
   const [splitDragging, setSplitDragging] = useState(false);
+  const [activeTab, setActiveTab] = useState<AppTabKey>("machine");
   const splitShellRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ startY: number; startRatio: number; containerHeight: number } | null>(null);
 
@@ -548,6 +556,26 @@ export function App() {
         </div>
       )}
 
+      <nav className="app-tabs" role="tablist" aria-label="主导航">
+        {appTabs.map((tab) => (
+          <button
+            key={tab.key}
+            role="tab"
+            aria-selected={activeTab === tab.key}
+            className={activeTab === tab.key ? "active" : ""}
+            type="button"
+            onClick={() => setActiveTab(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {activeTab === "sensor" ? (
+        <main className="app-tab-panel">
+          <SensorBoard />
+        </main>
+      ) : (
       <main className="monitor-layout">
         <aside className="job-sidebar">
           <div className="side-toolbar">
@@ -635,6 +663,7 @@ export function App() {
           </div>
         </section>
       </main>
+      )}
     </div>
   );
 }

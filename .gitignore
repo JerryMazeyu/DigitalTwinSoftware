@@ -43,3 +43,6 @@ temp/
 cache/
 *.sqlite
 *.db
+
+# Tool scratch files
+tools/.meta_symbols.json
