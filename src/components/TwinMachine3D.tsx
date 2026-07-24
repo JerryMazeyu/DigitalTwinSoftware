@@ -7,6 +7,12 @@ import { OrbitControls as ThreeOrbitControls } from "three/examples/jsm/controls
 import { CoaterObjModel } from "./CoaterObjModel";
 import { coaterModelLayers, createAllLayerSelection, toggleLayerSelection, type CoaterModelLayerId } from "../domain/modelLayers";
 import type { MachineStatus, RiskLevel, SystemHealth } from "../domain/models";
+import {
+  MeshPlcLabelOverlay,
+  MeshPlcLabelTracker,
+  type MeshPlcLabelTrackerRef
+} from "./sensorBoard/MeshPlcLabel";
+import { usePlcSensorValue } from "../hooks/usePlcSensorValue";
 
 extend({ OrbitControls: ThreeOrbitControls });
 
@@ -331,17 +337,33 @@ function ModelStatusLayer({ machine, riskLevel }: { machine: MachineStatus; risk
 function RealModelScene({
   machine,
   riskLevel,
-  visibleLayerIds
+  visibleLayerIds,
+  onScene,
+  chamber1TrackerRef
 }: {
   machine: MachineStatus;
   riskLevel: RiskLevel;
   visibleLayerIds: CoaterModelLayerId[];
+  onScene: (root: THREE.Object3D) => void;
+  chamber1TrackerRef: React.MutableRefObject<MeshPlcLabelTrackerRef>;
 }) {
+  const [sceneRoot, setLocalSceneRoot] = useState<THREE.Object3D | null>(null);
+  const handleScene = (root: THREE.Object3D) => {
+    setLocalSceneRoot(root);
+    onScene(root);
+  };
   return (
     <>
       <ModelSceneEnvironment />
-      <CoaterObjModel visibleLayerIds={visibleLayerIds} />
+      <CoaterObjModel visibleLayerIds={visibleLayerIds} onScene={handleScene} />
       <ModelStatusLayer machine={machine} riskLevel={riskLevel} />
+      <MeshPlcLabelTracker
+        sceneRoot={sceneRoot}
+        meshName="___01"
+        worldPosition={[0, 1.1, 0]}
+        offset={[0, 1.0, 0]}
+        trackerRef={chamber1TrackerRef}
+      />
     </>
   );
 }
@@ -350,6 +372,9 @@ export function TwinMachine3D({ machine, riskLevel, health, compact = false }: T
   const onlineCount = useMemo(() => health.filter((item) => item.online).length, [health]);
   const [layerPanelOpen, setLayerPanelOpen] = useState(false);
   const [visibleLayerIds, setVisibleLayerIds] = useState<CoaterModelLayerId[]>(() => createAllLayerSelection());
+  const [coaterScene, setCoaterScene] = useState<THREE.Object3D | null>(null);
+  const chamber1TrackerRef = useRef<MeshPlcLabelTrackerRef>({ x: 0, y: 0, visible: false, dirty: true });
+  const chamber1Live = usePlcSensorValue("dbVacOpStatus_bChbHiVac1", 2000);
 
   return (
     <section className={compact ? "panel machine-panel machine-panel-fill" : "panel machine-panel"} aria-label="镀膜机三维数字孪生">
@@ -395,10 +420,23 @@ export function TwinMachine3D({ machine, riskLevel, health, compact = false }: T
           <FreeCameraControls />
           <ModelErrorBoundary fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
             <Suspense fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
-              <RealModelScene machine={machine} riskLevel={riskLevel} visibleLayerIds={visibleLayerIds} />
+              <RealModelScene
+                machine={machine}
+                riskLevel={riskLevel}
+                visibleLayerIds={visibleLayerIds}
+                onScene={setCoaterScene}
+                chamber1TrackerRef={chamber1TrackerRef}
+              />
             </Suspense>
           </ModelErrorBoundary>
         </Canvas>
+        <MeshPlcLabelOverlay
+          trackerRef={chamber1TrackerRef}
+          cnName="腔体1高真空"
+          enName="dbVacOpStatus_bChbHiVac1"
+          value={chamber1Live.unresolved ? null : chamber1Live.value}
+          dataType="Boolean"
+        />
         <div className="machine-overlay">
           <div><Activity size={15} />线速 {machine.lineSpeed} m/min</div>
           <div><Gauge size={15} />张力 {machine.tension} N</div>

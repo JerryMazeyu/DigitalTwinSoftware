@@ -1,5 +1,5 @@
 import { useLoader } from "@react-three/fiber";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
@@ -43,10 +43,14 @@ const prepareObject = (object: THREE.Object3D, visibleLayerIds: CoaterModelLayer
   };
 };
 
-export function CoaterObjModel({ visibleLayerIds }: { visibleLayerIds: CoaterModelLayerId[] }) {
+export function CoaterObjModel({ visibleLayerIds, onScene }: { visibleLayerIds: CoaterModelLayerId[]; onScene?: (root: THREE.Object3D) => void }) {
   const gltf = useLoader(GLTFLoader, `${MODEL_DIR}/coater.glb`) as unknown as { scene: THREE.Group };
 
   const prepared = useMemo(() => prepareObject(gltf.scene.clone(true), visibleLayerIds), [gltf.scene, visibleLayerIds]);
+
+  useEffect(() => {
+    onScene?.(prepared.object);
+  }, [prepared.object, onScene]);
 
   return (
     <group
