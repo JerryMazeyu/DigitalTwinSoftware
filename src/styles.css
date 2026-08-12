@@ -1591,17 +1591,17 @@ pre {
   border-radius: 4px;
 }
 
-.sensor-row:hover .sensor-tooltip {
+.sensor-row:hover .sensor-tooltip,
+.sensor-tooltip.visible {
   display: block;
 }
 
 .sensor-tooltip {
   display: none;
-  position: absolute;
-  z-index: 30;
-  top: 100%;
-  left: 12px;
-  margin-top: 6px;
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  z-index: 100;
   min-width: 280px;
   max-width: 360px;
   padding: 10px 12px;
@@ -1612,6 +1612,7 @@ pre {
   box-shadow: 0 12px 28px rgba(18, 43, 50, 0.32);
   font-size: 12px;
   line-height: 1.5;
+  pointer-events: none;
 }
 
 .sensor-tooltip-row {
