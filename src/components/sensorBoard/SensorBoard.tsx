@@ -63,12 +63,12 @@ export const SensorBoard = () => {
   const connected = status.connected;
   const connectionLabel = loading
     ? "连接中"
-    : connected
-      ? "已连接"
-      : error
-        ? "读取失败"
+    : error
+      ? "读取失败"
+      : connected
+        ? "已连接"
         : "服务离线";
-  const connectionTone = loading ? "connecting" : connected ? "online" : error ? "error" : "offline";
+  const connectionTone = loading ? "connecting" : error ? "error" : connected ? "online" : "offline";
 
   // Surface a one-line resolution summary so the operator can see
   // how many of the wanted sensors actually exist on the live PLC.

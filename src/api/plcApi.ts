@@ -6,6 +6,35 @@ const envBase = (import.meta as ImportMeta & { env?: { VITE_PLC_API_BASE?: strin
 
 export const PLC_API_BASE = (envBase || "http://127.0.0.1:8000").replace(/\/$/, "");
 
+/** Per-request timeout (ms). Override via VITE_PLC_REQUEST_TIMEOUT_MS if needed. */
+const envTimeout = Number(
+  (import.meta as ImportMeta & { env?: { VITE_PLC_REQUEST_TIMEOUT_MS?: string } }).env?.VITE_PLC_REQUEST_TIMEOUT_MS
+);
+export const PLC_REQUEST_TIMEOUT_MS = Number.isFinite(envTimeout) && envTimeout > 0 ? envTimeout : 4000;
+
+/** Build an AbortSignal that fires after `ms` or when the caller cancels. */
+const timeoutSignal = (ms: number, external?: AbortSignal): AbortSignal => {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(new Error("timeout")), ms);
+  if (external) {
+    if (external.aborted) controller.abort(external.reason);
+    else external.addEventListener("abort", () => controller.abort(external.reason), { once: true });
+  }
+  // The signal lives for the request; clean up timer when caller ends.
+  controller.signal.addEventListener("abort", () => window.clearTimeout(timer), { once: true });
+  return controller.signal;
+};
+
+/** Classify a thrown error: timeout vs network failure vs HTTP error. */
+export type PlcFetchErrorKind = "timeout" | "network" | "aborted";
+export const classifyFetchError = (error: unknown): PlcFetchErrorKind => {
+  if (!error || typeof error !== "object") return "network";
+  const e = error as { name?: string; message?: string };
+  if (e.name === "AbortError") return "aborted";
+  if (e.message === "timeout" || /timeout/i.test(e.message ?? "")) return "timeout";
+  return "network";
+};
+
 export type PlcVarLive = {
   name: string;
   type: string;
@@ -44,14 +73,19 @@ export type PlcSymbolsPayload = {
  */
 export const fetchPlcStatus = async (signal?: AbortSignal): Promise<PlcStatusPayload> => {
   try {
-    const response = await fetch(`${PLC_API_BASE}/api/status`, { signal });
+    const response = await fetch(`${PLC_API_BASE}/api/status`, {
+      signal: timeoutSignal(PLC_REQUEST_TIMEOUT_MS, signal)
+    });
     if (!response.ok) {
       return { connected: false, last_error: `HTTP ${response.status}` };
     }
     return (await response.json()) as PlcStatusPayload;
   } catch (error) {
-    if ((error as { name?: string })?.name === "AbortError") {
+    if (classifyFetchError(error) === "aborted") {
       return { connected: false, last_error: "aborted" };
+    }
+    if (classifyFetchError(error) === "timeout") {
+      return { connected: false, last_error: "timeout" };
     }
     return {
       connected: false,
@@ -67,7 +101,9 @@ export const fetchPlcVars = async (signal?: AbortSignal): Promise<{
   error: string | null;
 }> => {
   try {
-    const response = await fetch(`${PLC_API_BASE}/api/vars`, { signal });
+    const response = await fetch(`${PLC_API_BASE}/api/vars`, {
+      signal: timeoutSignal(PLC_REQUEST_TIMEOUT_MS, signal)
+    });
     if (!response.ok) {
       const text = await response.text().catch(() => "");
       return { bySymbol: {}, raw: null, error: text || `HTTP ${response.status}` };
@@ -82,8 +118,11 @@ export const fetchPlcVars = async (signal?: AbortSignal): Promise<{
     }
     return { bySymbol, raw: payload, error: null };
   } catch (error) {
-    if ((error as { name?: string })?.name === "AbortError") {
+    if (classifyFetchError(error) === "aborted") {
       return { bySymbol: {}, raw: null, error: "aborted" };
+    }
+    if (classifyFetchError(error) === "timeout") {
+      return { bySymbol: {}, raw: null, error: `读取超时（${PLC_REQUEST_TIMEOUT_MS}ms）` };
     }
     return {
       bySymbol: {},
@@ -93,14 +132,28 @@ export const fetchPlcVars = async (signal?: AbortSignal): Promise<{
   }
 };
 
-/** Read a single variable by its PLC name (with or without the `.` prefix). */
-export const fetchPlcVar = async (plainName: string, signal?: AbortSignal): Promise<PlcVarLive> => {
+/** Read a single variable by its PLC name. Times out after `PLC_REQUEST_TIMEOUT_MS`. */
+export const fetchPlcVar = async (
+  plainName: string,
+  signal?: AbortSignal
+): Promise<PlcVarLive | null> => {
   const url = `${PLC_API_BASE}/api/vars/${encodeURIComponent(plainName)}`;
-  const response = await fetch(url, { signal });
-  if (!response.ok) {
-    return { name: plainName, type: "Unknown", value: null };
+  try {
+    const response = await fetch(url, {
+      signal: timeoutSignal(PLC_REQUEST_TIMEOUT_MS, signal)
+    });
+    if (!response.ok) {
+      return { name: plainName, type: "Unknown", value: null };
+    }
+    return (await response.json()) as PlcVarLive;
+  } catch (error) {
+    const kind = classifyFetchError(error);
+    if (kind === "aborted") return null;
+    if (kind === "timeout") {
+      return { name: plainName, type: "Timeout", value: null };
+    }
+    return { name: plainName, type: "NetworkError", value: null };
   }
-  return (await response.json()) as PlcVarLive;
 };
 
 /**
@@ -108,7 +161,9 @@ export const fetchPlcVar = async (plainName: string, signal?: AbortSignal): Prom
  * and used to map our对照表 canonical names to the real PLC dotted/UPPER form.
  */
 export const fetchPlcSymbols = async (signal?: AbortSignal): Promise<PlcSymbolsPayload> => {
-  const response = await fetch(`${PLC_API_BASE}/api/symbols`, { signal });
+  const response = await fetch(`${PLC_API_BASE}/api/symbols`, {
+    signal: timeoutSignal(PLC_REQUEST_TIMEOUT_MS, signal)
+  });
   if (!response.ok) {
     throw new Error(`/api/symbols HTTP ${response.status}`);
   }

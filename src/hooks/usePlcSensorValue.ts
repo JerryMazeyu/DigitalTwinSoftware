@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   buildPlcSymbolLookup,
+  classifyFetchError,
   fetchPlcStatus,
   fetchPlcSymbols,
   fetchPlcVar
@@ -15,6 +16,8 @@ export type PlcSensorValue = {
   error: string | null;
   /** True when the canonical name could not be resolved on the live PLC. */
   unresolved: boolean;
+  /** True when the read failed with a timeout (read endpoint is stuck). */
+  timedOut: boolean;
 };
 
 const INITIAL: PlcSensorValue = {
@@ -23,12 +26,14 @@ const INITIAL: PlcSensorValue = {
   lastFetchAt: null,
   connected: false,
   error: null,
-  unresolved: false
+  unresolved: false,
+  timedOut: false
 };
 
 /**
  * Single-symbol polling hook for things like "this one mesh needs the chamber-1 hi-vac boolean".
- * Builds the lookup once and reuses it across polls.
+ * Builds the lookup once and reuses it across polls. All fetches go through
+ * `fetchPlcVar` which has its own timeout, so this hook never hangs the UI.
  */
 export const usePlcSensorValue = (plcSymbol: string, intervalMs = 2000): PlcSensorValue => {
   const [state, setState] = useState<PlcSensorValue>(INITIAL);
@@ -58,19 +63,40 @@ export const usePlcSensorValue = (plcSymbol: string, intervalMs = 2000): PlcSens
         if (!aliveRef.current) return;
         const live = await fetchPlcVar(actualNameRef.current);
         if (!aliveRef.current) return;
+
+        if (!live) {
+          setState((current) => ({
+            ...current,
+            connected: status.connected,
+            error: "读取被中止",
+            timedOut: true,
+            lastFetchAt: new Date().toISOString()
+          }));
+          return;
+        }
+
+        const timedOut = live.type === "Timeout" || live.type === "NetworkError";
         setState({
           value: live.value,
           type: live.type,
           lastFetchAt: new Date().toISOString(),
           connected: status.connected,
-          error: null,
-          unresolved: false
+          error: timedOut ? "PLC 读取超时，请检查 BeckhoffJMJReader 服务" : null,
+          unresolved: false,
+          timedOut
         });
       } catch (error) {
         if (!aliveRef.current) return;
+        const kind = classifyFetchError(error);
         setState((current) => ({
           ...current,
-          error: error instanceof Error ? error.message : "fetch failed"
+          error:
+            kind === "timeout"
+              ? "PLC 读取超时"
+              : error instanceof Error
+                ? error.message
+                : "fetch failed",
+          timedOut: kind === "timeout"
         }));
       }
     };

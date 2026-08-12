@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   buildPlcSymbolLookup,
+  classifyFetchError,
   fetchPlcStatus,
   fetchPlcSymbols,
   fetchPlcVar,
@@ -115,32 +116,50 @@ export const usePlcSensors = (options: UsePlcSensorsOptions) => {
 
       fetchingRef.current = true;
       try {
-        const controller = new AbortController();
         const fetches = await runWithConcurrency(
           resolvedNames,
           concurrency,
           async (canonical) => {
             const actual = lookup.byCanonical.get(canonical)!;
-            try {
-              const live = await fetchPlcVar(actual, controller.signal);
-              return [canonical, live] as const;
-            } catch {
-              return [canonical, null] as const;
-            }
+            const live = await fetchPlcVar(actual);
+            return [canonical, live] as const;
           }
         );
         if (!aliveRef.current) return;
 
         const bySymbol: Record<string, PlcVarLive> = {};
+        let timeoutCount = 0;
         for (const [canonical, live] of fetches) {
-          if (live) bySymbol[canonical] = live;
+          if (live) {
+            if (live.type === "Timeout" || live.type === "NetworkError") {
+              timeoutCount += 1;
+            } else {
+              bySymbol[canonical] = live;
+            }
+          }
         }
+        const allTimedOut = timeoutCount === resolvedNames.length;
         setState((current) => ({
           ...current,
           bySymbol,
           loading: false,
-          error: null,
+          error: allTimedOut
+            ? `PLC 读取超时（${resolvedNames.length}/${resolvedNames.length} 项），请检查 BeckhoffJMJReader 服务的 pyads 状态`
+            : timeoutCount > 0
+              ? `${timeoutCount}/${resolvedNames.length} 项读取超时`
+              : null,
           lastFetchAt: new Date().toISOString()
+        }));
+      } catch (error) {
+        if (!aliveRef.current) return;
+        setState((current) => ({
+          ...current,
+          loading: false,
+          error: classifyFetchError(error) === "timeout"
+            ? "PLC 读取批量超时"
+            : error instanceof Error
+              ? error.message
+              : "PLC 读取失败"
         }));
       } finally {
         fetchingRef.current = false;
@@ -160,10 +179,16 @@ export const usePlcSensors = (options: UsePlcSensorsOptions) => {
         lookupJustBuilt = true;
       } catch (error) {
         if (!aliveRef.current) return;
+        const kind = classifyFetchError(error);
         setState((current) => ({
           ...current,
           loading: false,
-          error: error instanceof Error ? error.message : "无法获取 PLC 符号表"
+          error:
+            kind === "timeout"
+              ? "无法获取 PLC 符号表（读取超时）"
+              : error instanceof Error
+                ? error.message
+                : "无法获取 PLC 符号表"
         }));
         return;
       }
