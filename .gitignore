@@ -46,3 +46,8 @@ cache/
 
 # Tool scratch files
 tools/.meta_symbols.json
+
+# Code-generation artifacts (rendering experiments, one-off inspection
+# scripts, verification PNGs/JSONs, etc.) — never commit these; put them in
+# artifacts/codex/ or a similar folder.
+artifacts/

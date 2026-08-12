@@ -170,6 +170,25 @@
 - UI 信息架构发生较大调整。
 - 项目技术栈和运行方式确定后。
 
+## 临时文件与建模产物
+
+凡是建模脚本（Blender、CAD 转换、材质烘焙、相机标定）、渲染验证产物（PNG、JSON、MP4）、一次性巡检脚本（`inspect_*`、`verify_*`、`debug_*`、`_tmp`、`_verify_*`）等都属于临时产物，不应提交到仓库。
+
+约定：
+
+- **存放位置**：所有这类文件必须放在 `artifacts/<agent-or-topic>/` 子目录下。当前已有的示例：`artifacts/codex/`（之前建模探索产生的临时脚本、验证截图与 JSON 已经全部归档于此）。
+- **不要污染主目录**：任何名为 `*.py` 的脚本如果是一次性的，请放进 `artifacts/<topic>/`，不要直接放在 `tools/`（`tools/` 只放**会被复用**的脚本，例如 `tools/smoke_plc_api.mjs`、`tools/generate_plc_sensor_map.py`）。
+- **不要污染 docs/**：建模规划、规格等需要长期保留的文档放在 `docs/`；一次性渲染日志、临时检查清单等放在 `artifacts/<topic>/`。
+- **gitignore**：`artifacts/` 已经在 `.gitignore` 中。如果你创建的临时目录不在 `artifacts/` 下（例如 `_debug/`、`tmp_render/`），请同步追加到 `.gitignore`。
+- **可恢复的清理**：本地可以随时 `rm -rf artifacts/<topic>/` 重做，因为这些产物可由原始脚本重新生成。
+
+判断标准：脚本是否会在后续开发周期被**反复运行**？
+
+- 是 → 放在 `tools/`，可考虑提交
+- 否 → 放在 `artifacts/<topic>/`，不提交
+
+如果脚本里有值得复用的逻辑但当前不该提交（如某个 `inspect_*` 工具里有可通用的 helper），把 helper 提取到独立文件后再决定归属。
+
 ## 后续开发智能体工作方式
 
 在本仓库继续工作时，开发智能体应：
