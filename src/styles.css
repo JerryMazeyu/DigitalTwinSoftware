@@ -588,6 +588,47 @@ button {
   accent-color: #72d6c9;
 }
 
+/* Wider, scrollable popover for the 锚点 panel (more rows than the 图层
+   popover). Applied to whichever control uses .model-layer-popover and
+   also contains .anchor-category children. */
+.model-layer-control:has(.anchor-category) .model-layer-popover {
+  width: 232px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.anchor-category {
+  display: grid;
+  gap: 2px;
+}
+
+.anchor-category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px 2px;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #b6dad6;
+  border-bottom: 1px solid rgba(145, 216, 207, 0.18);
+}
+
+.anchor-category-header em {
+  font-style: normal;
+  font-size: 10px;
+  opacity: 0.65;
+}
+
+.anchor-summary {
+  margin-top: 6px;
+  padding: 4px 6px;
+  font-size: 11px;
+  color: #b6dad6;
+  text-align: center;
+  border-top: 1px solid rgba(145, 216, 207, 0.18);
+}
+
 .machine-overlay {
   position: absolute;
   left: 12px;

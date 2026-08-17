@@ -1,5 +1,5 @@
 import { Canvas, extend, useFrame, useThree, type ReactThreeFiber } from "@react-three/fiber";
-import { Activity, Gauge, Layers3, RadioTower, ScanLine } from "lucide-react";
+import { Activity, Anchor, Gauge, Layers3, RadioTower, ScanLine } from "lucide-react";
 import { Component, Suspense, useEffect, useMemo, useRef, useState, type PropsWithChildren, type ReactNode } from "react";
 import * as THREE from "three";
 import { OrbitControls as ThreeOrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -12,7 +12,9 @@ import {
   MeshPlcLabelTracker,
   type MeshPlcLabelTrackerRef
 } from "./sensorBoard/MeshPlcLabel";
-import { usePlcSensorValue } from "../hooks/usePlcSensorValue";
+import { usePlcSensors } from "../hooks/usePlcSensors";
+import { PLC_ANCHOR_CONFIG, type PlcAnchorConfigEntry } from "../data/plcAnchorConfig";
+import { PLC_SENSOR_META } from "../data/plcSensorMap";
 
 extend({ OrbitControls: ThreeOrbitControls });
 
@@ -339,13 +341,15 @@ function RealModelScene({
   riskLevel,
   visibleLayerIds,
   onScene,
-  chamber1TrackerRef
+  anchorConfigs,
+  getAnchorTrackerRef
 }: {
   machine: MachineStatus;
   riskLevel: RiskLevel;
   visibleLayerIds: CoaterModelLayerId[];
   onScene: (root: THREE.Object3D) => void;
-  chamber1TrackerRef: React.MutableRefObject<MeshPlcLabelTrackerRef>;
+  anchorConfigs: PlcAnchorConfigEntry[];
+  getAnchorTrackerRef: (plcSymbol: string) => React.MutableRefObject<MeshPlcLabelTrackerRef>;
 }) {
   const [sceneRoot, setLocalSceneRoot] = useState<THREE.Object3D | null>(null);
   const handleScene = (root: THREE.Object3D) => {
@@ -357,13 +361,15 @@ function RealModelScene({
       <ModelSceneEnvironment />
       <CoaterObjModel visibleLayerIds={visibleLayerIds} onScene={handleScene} />
       <ModelStatusLayer machine={machine} riskLevel={riskLevel} />
-      <MeshPlcLabelTracker
-        sceneRoot={sceneRoot}
-        meshName="___01"
-        worldPosition={[0, 1.1, 0]}
-        offset={[0, 1.0, 0]}
-        trackerRef={chamber1TrackerRef}
-      />
+      {anchorConfigs.map((anchor) => (
+        <MeshPlcLabelTracker
+          key={anchor.plcSymbol}
+          sceneRoot={sceneRoot}
+          worldPosition={anchor.worldPosition}
+          offset={anchor.offset ?? [0, 0.2, 0]}
+          trackerRef={getAnchorTrackerRef(anchor.plcSymbol)}
+        />
+      ))}
     </>
   );
 }
@@ -373,8 +379,55 @@ export function TwinMachine3D({ machine, riskLevel, health, compact = false }: T
   const [layerPanelOpen, setLayerPanelOpen] = useState(false);
   const [visibleLayerIds, setVisibleLayerIds] = useState<CoaterModelLayerId[]>(() => createAllLayerSelection());
   const [coaterScene, setCoaterScene] = useState<THREE.Object3D | null>(null);
-  const chamber1TrackerRef = useRef<MeshPlcLabelTrackerRef>({ x: 0, y: 0, visible: false, dirty: true });
-  const chamber1Live = usePlcSensorValue("dbVacOpStatus_bChbHiVac1", 2000);
+
+  // ----- 3D 锚点面板接线 -----
+  const metaBySymbol = useMemo(
+    () => new Map(PLC_SENSOR_META.map((m) => [m.plcSymbol, m])),
+    []
+  );
+
+  // 默认可见锚点（配置层开启）组成用户可切换的候选集。defaultVisible: false
+  // 的锚点既不出现在面板里也不会被轮询——这就是「配置 > 开关面板」的优先级。
+  const anchorCandidates = useMemo(
+    () => PLC_ANCHOR_CONFIG.filter((a) => a.defaultVisible),
+    []
+  );
+
+  const [anchorVisibility, setAnchorVisibility] = useState<Set<string>>(
+    () => new Set(anchorCandidates.map((a) => a.plcSymbol))
+  );
+  const [anchorPanelOpen, setAnchorPanelOpen] = useState(false);
+
+  const toggleAnchor = (plcSymbol: string) =>
+    setAnchorVisibility((prev) => {
+      const next = new Set(prev);
+      if (next.has(plcSymbol)) next.delete(plcSymbol);
+      else next.add(plcSymbol);
+      return next;
+    });
+
+  // 同时满足「配置开启」和「用户已切换开启」的锚点，会同时驱动渲染和批量轮询。
+  const visibleAnchors = useMemo(
+    () =>
+      anchorCandidates.filter((a) => anchorVisibility.has(a.plcSymbol)),
+    [anchorCandidates, anchorVisibility]
+  );
+
+  // 每个锚点对应一个 ref，按需懒创建。
+  const anchorTrackerRefs = useRef<Record<string, MeshPlcLabelTrackerRef>>({});
+  const getAnchorTrackerRef = (plcSymbol: string): React.MutableRefObject<MeshPlcLabelTrackerRef> => {
+    if (!anchorTrackerRefs.current[plcSymbol]) {
+      anchorTrackerRefs.current[plcSymbol] = { x: 0, y: 0, visible: false, dirty: true };
+    }
+    return { current: anchorTrackerRefs.current[plcSymbol] };
+  };
+
+  // 批量轮询——一次符号查询 + 16 路并发拉取，替代原本需要 22+ 个独立
+  // usePlcSensorValue 定时器的方案。
+  const anchorLive = usePlcSensors({
+    wantedSymbols: visibleAnchors.map((a) => a.plcSymbol),
+    intervalMs: 2000
+  });
 
   return (
     <section className={compact ? "panel machine-panel machine-panel-fill" : "panel machine-panel"} aria-label="镀膜机三维数字孪生">
@@ -416,6 +469,70 @@ export function TwinMachine3D({ machine, riskLevel, health, compact = false }: T
             </div>
           )}
         </div>
+        <div className="model-layer-control">
+          <button
+            className={anchorPanelOpen ? "active" : ""}
+            type="button"
+            onClick={() => setAnchorPanelOpen((open) => !open)}
+            title="临时切换 PLC 数据点锚点的显示"
+          >
+            <Anchor size={15} />
+            <span>锚点</span>
+          </button>
+          {anchorPanelOpen && (
+            <div className="model-layer-popover">
+              <div className="layer-actions">
+                <button
+                  type="button"
+                  onClick={() => setAnchorVisibility(new Set(anchorCandidates.map((a) => a.plcSymbol)))}
+                >
+                  全部
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAnchorVisibility(new Set())}
+                >
+                  清空
+                </button>
+              </div>
+              {(["SputterPowerActual", "WindingActual", "IonSourceActual", "TemperatureOrColdTrap"] as const).map((cat) => {
+                const items = anchorCandidates.filter((a) => a.categoryEn === cat);
+                if (items.length === 0) return null;
+                const categoryLabels: Record<typeof cat, string> = {
+                  SputterPowerActual: "溅射电源",
+                  WindingActual: "卷绕",
+                  IonSourceActual: "离子源",
+                  TemperatureOrColdTrap: "温度 · 冷捕集"
+                };
+                return (
+                  <div key={cat} className="anchor-category">
+                    <div className="anchor-category-header">
+                      <span>{categoryLabels[cat]}</span>
+                      <em>{items.length} 项</em>
+                    </div>
+                    {items.map((anchor) => {
+                      const meta = metaBySymbol.get(anchor.plcSymbol);
+                      const label = anchor.cnName ?? meta?.cnName ?? anchor.partId;
+                      return (
+                        <label key={anchor.plcSymbol} title={anchor.partId}>
+                          <input
+                            checked={anchorVisibility.has(anchor.plcSymbol)}
+                            type="checkbox"
+                            onChange={() => toggleAnchor(anchor.plcSymbol)}
+                          />
+                          <span>{label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+              <div className="anchor-summary">
+                可见 {visibleAnchors.length} 项 · 已配置 {anchorCandidates.length} 项
+              </div>
+            </div>
+          )}
+        </div>
         <Canvas camera={{ position: DEFAULT_CAMERA_POSITION, fov: 30 }} shadows>
           <FreeCameraControls />
           <ModelErrorBoundary fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
@@ -425,18 +542,26 @@ export function TwinMachine3D({ machine, riskLevel, health, compact = false }: T
                 riskLevel={riskLevel}
                 visibleLayerIds={visibleLayerIds}
                 onScene={setCoaterScene}
-                chamber1TrackerRef={chamber1TrackerRef}
+                anchorConfigs={visibleAnchors}
+                getAnchorTrackerRef={getAnchorTrackerRef}
               />
             </Suspense>
           </ModelErrorBoundary>
         </Canvas>
-        <MeshPlcLabelOverlay
-          trackerRef={chamber1TrackerRef}
-          cnName="腔体1高真空"
-          enName="dbVacOpStatus_bChbHiVac1"
-          value={chamber1Live.unresolved ? null : chamber1Live.value}
-          dataType="Boolean"
-        />
+        {visibleAnchors.map((anchor) => {
+          const meta = metaBySymbol.get(anchor.plcSymbol);
+          const live = anchorLive.bySymbol[anchor.plcSymbol];
+          const value = live ? live.value : null;
+          return (
+            <MeshPlcLabelOverlay
+              key={anchor.plcSymbol}
+              trackerRef={getAnchorTrackerRef(anchor.plcSymbol)}
+              cnName={anchor.cnName ?? meta?.cnName ?? anchor.partId}
+              value={value}
+              dataType={meta?.dataType}
+            />
+          );
+        })}
         <div className="machine-overlay">
           <div><Activity size={15} />线速 {machine.lineSpeed} m/min</div>
           <div><Gauge size={15} />张力 {machine.tension} N</div>
