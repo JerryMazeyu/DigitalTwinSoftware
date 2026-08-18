@@ -17,6 +17,8 @@ import { usePlcSensors } from "../hooks/usePlcSensors";
 import { PLC_ANCHOR_CONFIG } from "../data/plcAnchorConfig";
 import { clusterAnchorsByPosition, type AnchorCluster } from "../data/plcAnchorClusters";
 import { PLC_SENSOR_META } from "../data/plcSensorMap";
+import { CHAMBERS, CHAMBER_PRIMARY_SYMBOL, CHAMBER_SYMBOLS, type ChamberId } from "../data/chambers";
+import { ChamberSelector } from "./sensorBoard/ChamberSelector";
 
 extend({ OrbitControls: ThreeOrbitControls });
 
@@ -449,12 +451,21 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, compact = f
       return next;
     });
 
-  // 同时满足「配置开启」和「用户已切换开启」的锚点，会同时驱动渲染和批量轮询。
-  const visibleAnchors = useMemo(
-    () =>
-      anchorCandidates.filter((a) => anchorVisibility.has(a.plcSymbol)),
-    [anchorCandidates, anchorVisibility]
-  );
+  // 当前选中的腔室（null = 显示全部）。腔室按钮触发 setSelectedChamber，
+  // 控制下方三处状态：右侧面板按腔室过滤 + 排序，3D 圆点高亮，批量轮询
+  // 范围收敛到该腔室的 plcSymbol。
+  const [selectedChamber, setSelectedChamber] = useState<ChamberId | null>(null);
+
+// 同时满足「配置开启」、「用户已切换开启」、「属于当前选中腔室（如有）」的锚点。
+  const visibleAnchors = useMemo(() => {
+    const base = anchorCandidates.filter((a) =>
+      anchorVisibility.has(a.plcSymbol)
+    );
+    if (!selectedChamber) return base;
+    const chamberSymbols = CHAMBER_SYMBOLS.get(selectedChamber);
+    if (! chamberSymbols) return base;
+    return base.filter((a) => chamberSymbols.has(a.plcSymbol));
+  }, [anchorCandidates, anchorVisibility, selectedChamber]);
 
   // 按 worldPosition 把可见锚点分簇；同一物理位置的多个数据点共享一个 banner。
   const visibleClusters = useMemo(
@@ -463,8 +474,28 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, compact = f
   );
 
   // 全部锚点（按 PLC_ANCHOR_CONFIG 的全部条目，无论是否 defaultVisible）——
-  // 右侧数据面板按此渲染，每个锚点一行。隐藏的会以 "—" 提示该位置有数据但未在轮询。
+  // 右侧面板过滤前的全集。
   const allAnchors = useMemo(() => PLC_ANCHOR_CONFIG, []);
+
+  // 右侧面板实际展示的锚点列表：未选腔室时显示全部；选中时按腔室配置里的
+  // plcSymbol 顺序展示（首项 = 主锚点，放第一排加粗）。
+  const displayedAnchors = useMemo(() => {
+    if (!selectedChamber) return allAnchors;
+    const chamber = CHAMBERS.find((c) => c.id === selectedChamber);
+    if (!chamber) return allAnchors;
+    const symbols = chamber.anchorPlcSymbolsOverride ?? [chamber.primaryPlcSymbol];
+    const bySymbol = new Map(allAnchors.map((a) => [a.plcSymbol, a]));
+    return symbols
+      .map((s) => bySymbol.get(s))
+      .filter((a): a is NonNullable<typeof a> => a !== undefined);
+  }, [allAnchors, selectedChamber]);
+
+  // 当前腔室的主锚点 plcSymbol（用于面板行加粗显示）。
+  const primaryPlcSymbols = useMemo(() => {
+    if (!selectedChamber) return new Set<string>();
+    const sym = CHAMBER_PRIMARY_SYMBOL.get(selectedChamber);
+    return sym ? new Set([sym]) : new Set<string>();
+  }, [selectedChamber]);
 
   // 当前被 hover 的 cluster key——3D 上的小圆点和右侧数据面板共用同一状态，
   // 一方 hover 时另一方同步高亮。
@@ -659,6 +690,7 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, compact = f
                 trackerRef={getClusterTrackerRef(cluster.positionKey)}
                 rows={rows}
                 externallyHovered={hoveredClusterKey === cluster.positionKey}
+                highlighted={selectedChamber !== null}
                 onHoverChange={(hovering) =>
                   setHoveredClusterKey(hovering ? cluster.positionKey : null)
                 }
@@ -667,12 +699,17 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, compact = f
           })}
         </div>
         <ClusterDataPanel
-          allAnchors={allAnchors}
+          allAnchors={displayedAnchors}
           visibleAnchorSymbols={anchorVisibility}
           anchorLive={anchorLive}
           metaBySymbol={metaBySymbol}
+          primaryPlcSymbols={primaryPlcSymbols}
           hoveredClusterKey={hoveredClusterKey}
           onHoverCluster={setHoveredClusterKey}
+        />
+        <ChamberSelector
+          selected={selectedChamber}
+          onSelect={setSelectedChamber}
         />
       </div>
     </section>

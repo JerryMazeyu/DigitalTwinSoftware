@@ -29,6 +29,8 @@ export type ClusterDataPanelProps = {
   visibleAnchorSymbols: Set<string>;
   anchorLive: PlcSensorLiveState;
   metaBySymbol: Map<string, PlcSensorMeta>;
+  /** 当前选中腔室的主锚点 plcSymbol 集合，匹配的行加粗显示。 */
+  primaryPlcSymbols: Set<string>;
   hoveredClusterKey: string | null;
   onHoverCluster: (key: string | null) => void;
 };
@@ -43,6 +45,7 @@ export function ClusterDataPanel({
   visibleAnchorSymbols,
   anchorLive,
   metaBySymbol,
+  primaryPlcSymbols,
   hoveredClusterKey,
   onHoverCluster
 }: ClusterDataPanelProps) {
@@ -78,6 +81,7 @@ export function ClusterDataPanel({
                   const isVisible = visibleAnchorSymbols.has(anchor.plcSymbol);
                   const positionKey = anchor.worldPosition.join(",");
                   const isHovered = hoveredClusterKey === positionKey;
+                  const isPrimary = primaryPlcSymbols.has(anchor.plcSymbol);
 
                   const meta = metaBySymbol.get(anchor.plcSymbol);
                   const live = anchorLive.bySymbol[anchor.plcSymbol];
@@ -91,7 +95,8 @@ export function ClusterDataPanel({
                       className={[
                         "data-panel-row",
                         isHovered ? "is-hovered" : "",
-                        isVisible ? "is-on" : "is-off"
+                        isVisible ? "is-on" : "is-off",
+                        isPrimary ? "is-primary" : ""
                       ]
                         .filter(Boolean)
                         .join(" ")}

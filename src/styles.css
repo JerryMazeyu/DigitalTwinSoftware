@@ -495,11 +495,13 @@ button {
   background: #10171a;
 }
 
-/* 3:1 split：左侧 3fr 画布，右侧 1fr 数据面板。仅当外层加上
-   .machine-canvas-grid 时生效。 */
+/* 3:1 split：左侧 3fr 画布，右侧 1fr 数据面板。第二行是腔室筛选按钮
+   横跨两列，所以网格需要两行布局。仅当外层加上 .machine-canvas-grid
+   时生效。 */
 .machine-canvas-grid {
   display: grid;
   grid-template-columns: 3fr 1fr;
+  grid-template-rows: 1fr auto;
   gap: 12px;
   padding: 12px;
   /* 画布内不允许文字选中 / 拖拽，否则 OrbitControls 会和默认文字拖拽
@@ -509,6 +511,13 @@ button {
 }
 .machine-canvas-grid * {
   -webkit-user-drag: none;
+}
+
+/* 腔室筛选按钮放在网格第二行，横跨左右两列；这样在 .machine-canvas
+   进入浏览器全屏时一并进入全屏。 */
+.chamber-selector {
+  grid-column: 1 / -1;
+  margin-top: 0;
 }
 
 .machine-canvas-main {
@@ -2061,6 +2070,66 @@ pre {
 .data-panel-row-value.tone-err   { color: #ff9c8e; }
 .data-panel-row-value.tone-muted { color: rgba(231, 243, 244, 0.55); }
 .data-panel-row-value.tone-number { color: #72d6c9; }
+
+/* 当前选中腔室的主锚点行——加粗 + 加深底色，和普通行形成层级。 */
+.data-panel-row.is-primary {
+  font-weight: 700;
+  background: rgba(114, 214, 201, 0.10);
+  border-color: rgba(114, 214, 201, 0.32);
+}
+.data-panel-row.is-primary.is-hovered {
+  background: rgba(114, 214, 201, 0.22);
+  border-color: rgba(114, 214, 201, 0.6);
+}
+
+/* ---------- 腔室筛选按钮组（画布下方） ---------- */
+.chamber-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(18, 36, 42, 0.55);
+  border: 1px solid rgba(114, 214, 201, 0.18);
+  border-radius: 8px;
+}
+
+.chamber-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 14px;
+  color: #d7f4ef;
+  background: rgba(18, 43, 50, 0.6);
+  border: 1px solid rgba(114, 214, 201, 0.28);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.chamber-btn:hover {
+  background: rgba(114, 214, 201, 0.18);
+  border-color: rgba(114, 214, 201, 0.55);
+}
+
+.chamber-btn.is-active {
+  color: #102329;
+  background: #72d6c9;
+  border-color: #72d6c9;
+}
+
+/* 选中腔室后，对应 cluster 的圆点视觉强调（轻微放大 + 更亮的青色光晕）。
+   与 :hover / .is-hovered 兼容——hover 在选中状态之上再放大。 */
+.cluster-dot.is-chamber-highlighted {
+  transform: scale(1.25);
+  background: #a9f2c8;
+  box-shadow: 0 0 10px rgba(169, 242, 200, 0.85);
+}
+.cluster-dot.is-chamber-highlighted:hover {
+  transform: scale(1.6);
+}
 
 /* ---------- 窄屏：3:1 分栏退化为上下堆叠 ---------- */
 @media (max-width: 1100px) {

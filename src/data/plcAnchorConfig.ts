@@ -86,8 +86,8 @@ const winding: PlcAnchorConfigEntry[] = [
 // 离子源电流 / 电压反馈——两个条目同坐标，由 cluster 合并为单条 banner。
 //（已调好）
 const ionSource: PlcAnchorConfigEntry[] = [
-  { plcSymbol: "dbEvapSwitch_fIONCur", partId: "IonSource", categoryEn: "IonSourceActual", cnName: "离子源电流反馈", worldPosition: [ -1, 1.7, 0.6], defaultVisible: true },
-  { plcSymbol: "dbEvapSwitch_fIONVol", partId: "IonSource", categoryEn: "IonSourceActual", cnName: "离子源电压反馈", worldPosition: [ -1, 1.7, 0.6], defaultVisible: true }
+  { plcSymbol: "dbEvapSwitch_fIONCur", partId: "IonSource", categoryEn: "IonSourceActual", cnName: "离子源电流反馈", worldPosition: [ -1.5, 1.6, 0.6], defaultVisible: true },
+  { plcSymbol: "dbEvapSwitch_fIONVol", partId: "IonSource", categoryEn: "IonSourceActual", cnName: "离子源电压反馈", worldPosition: [ -1.5, 1.6, 0.6], defaultVisible: true }
 ];
 
 // ---------- Vacuum gauges (G8–G19 only) ----------

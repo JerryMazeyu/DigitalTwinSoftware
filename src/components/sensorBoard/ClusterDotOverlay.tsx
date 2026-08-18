@@ -12,6 +12,8 @@ export type ClusterDotOverlayProps = {
   rows: { cnName: string; value: unknown; dataType?: string }[];
   /** 外部传入的「正在被高亮」状态（来自右侧面板 hover）。 */
   externallyHovered: boolean;
+  /** 当前选中的腔室包含此 cluster——视觉强调（不变影响 hover 行为）。 */
+  highlighted: boolean;
   /** 鼠标进入/离开圆点时调用，与右侧面板双向同步。 */
   onHoverChange?: (hovering: boolean) => void;
 };
@@ -25,6 +27,7 @@ export function ClusterDotOverlay({
   trackerRef,
   rows,
   externallyHovered,
+  highlighted,
   onHoverChange
 }: ClusterDotOverlayProps) {
   const elRef = useRef<HTMLDivElement | null>(null);
@@ -62,7 +65,7 @@ export function ClusterDotOverlay({
         style={{ display: "none" }}
       >
         <span
-          className="cluster-dot"
+          className={`cluster-dot${highlighted ? " is-chamber-highlighted" : ""}`}
           onMouseEnter={() => {
             setHovered(true);
             onHoverChange?.(true);
