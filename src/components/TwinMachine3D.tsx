@@ -8,12 +8,14 @@ import { CoaterObjModel } from "./CoaterObjModel";
 import { coaterModelLayers, createAllLayerSelection, toggleLayerSelection, type CoaterModelLayerId } from "../domain/modelLayers";
 import type { MachineStatus, RiskLevel, SystemHealth } from "../domain/models";
 import {
-  MeshPlcLabelOverlay,
-  MeshPlcLabelTracker,
+  MeshPlcLabelBannerOverlay,
+  MeshPlcLabelBannerTracker,
+  type BannerRow,
   type MeshPlcLabelTrackerRef
 } from "./sensorBoard/MeshPlcLabel";
 import { usePlcSensors } from "../hooks/usePlcSensors";
-import { PLC_ANCHOR_CONFIG, type PlcAnchorConfigEntry } from "../data/plcAnchorConfig";
+import { PLC_ANCHOR_CONFIG } from "../data/plcAnchorConfig";
+import { clusterAnchorsByPosition, type AnchorCluster } from "../data/plcAnchorClusters";
 import { PLC_SENSOR_META } from "../data/plcSensorMap";
 
 extend({ OrbitControls: ThreeOrbitControls });
@@ -341,15 +343,15 @@ function RealModelScene({
   riskLevel,
   visibleLayerIds,
   onScene,
-  anchorConfigs,
-  getAnchorTrackerRef
+  clusters,
+  getClusterTrackerRef
 }: {
   machine: MachineStatus;
   riskLevel: RiskLevel;
   visibleLayerIds: CoaterModelLayerId[];
   onScene: (root: THREE.Object3D) => void;
-  anchorConfigs: PlcAnchorConfigEntry[];
-  getAnchorTrackerRef: (plcSymbol: string) => React.MutableRefObject<MeshPlcLabelTrackerRef>;
+  clusters: AnchorCluster[];
+  getClusterTrackerRef: (positionKey: string) => React.MutableRefObject<MeshPlcLabelTrackerRef>;
 }) {
   const [sceneRoot, setLocalSceneRoot] = useState<THREE.Object3D | null>(null);
   const handleScene = (root: THREE.Object3D) => {
@@ -361,13 +363,13 @@ function RealModelScene({
       <ModelSceneEnvironment />
       <CoaterObjModel visibleLayerIds={visibleLayerIds} onScene={handleScene} />
       <ModelStatusLayer machine={machine} riskLevel={riskLevel} />
-      {anchorConfigs.map((anchor) => (
-        <MeshPlcLabelTracker
-          key={anchor.plcSymbol}
+      {clusters.map((cluster) => (
+        <MeshPlcLabelBannerTracker
+          key={cluster.positionKey}
           sceneRoot={sceneRoot}
-          worldPosition={anchor.worldPosition}
-          offset={anchor.offset ?? [0, 0.2, 0]}
-          trackerRef={getAnchorTrackerRef(anchor.plcSymbol)}
+          worldPosition={cluster.worldPosition}
+          offset={[0, 0.2, 0]}
+          trackerRef={getClusterTrackerRef(cluster.positionKey)}
         />
       ))}
     </>
@@ -413,13 +415,19 @@ export function TwinMachine3D({ machine, riskLevel, health, compact = false }: T
     [anchorCandidates, anchorVisibility]
   );
 
-  // 每个锚点对应一个 ref，按需懒创建。
-  const anchorTrackerRefs = useRef<Record<string, MeshPlcLabelTrackerRef>>({});
-  const getAnchorTrackerRef = (plcSymbol: string): React.MutableRefObject<MeshPlcLabelTrackerRef> => {
-    if (!anchorTrackerRefs.current[plcSymbol]) {
-      anchorTrackerRefs.current[plcSymbol] = { x: 0, y: 0, visible: false, dirty: true };
+  // 按 worldPosition 把可见锚点分簇；同一物理位置的多个数据点共享一个 banner。
+  const visibleClusters = useMemo(
+    () => clusterAnchorsByPosition(visibleAnchors),
+    [visibleAnchors]
+  );
+
+  // 每个簇对应一个 ref，按需懒创建——key 为簇的位置键。
+  const clusterTrackerRefs = useRef<Record<string, MeshPlcLabelTrackerRef>>({});
+  const getClusterTrackerRef = (positionKey: string): React.MutableRefObject<MeshPlcLabelTrackerRef> => {
+    if (!clusterTrackerRefs.current[positionKey]) {
+      clusterTrackerRefs.current[positionKey] = { x: 0, y: 0, visible: false, dirty: true };
     }
-    return { current: anchorTrackerRefs.current[plcSymbol] };
+    return { current: clusterTrackerRefs.current[positionKey] };
   };
 
   // 批量轮询——一次符号查询 + 16 路并发拉取，替代原本需要 22+ 个独立
@@ -542,23 +550,31 @@ export function TwinMachine3D({ machine, riskLevel, health, compact = false }: T
                 riskLevel={riskLevel}
                 visibleLayerIds={visibleLayerIds}
                 onScene={setCoaterScene}
-                anchorConfigs={visibleAnchors}
-                getAnchorTrackerRef={getAnchorTrackerRef}
+                clusters={visibleClusters}
+                getClusterTrackerRef={getClusterTrackerRef}
               />
             </Suspense>
           </ModelErrorBoundary>
         </Canvas>
-        {visibleAnchors.map((anchor) => {
-          const meta = metaBySymbol.get(anchor.plcSymbol);
-          const live = anchorLive.bySymbol[anchor.plcSymbol];
-          const value = live ? live.value : null;
+        {visibleClusters.map((cluster) => {
+          // 只渲染用户仍开启的成员；簇内全关则整个 banner 不渲染。
+          const rows: BannerRow[] = [];
+          for (const member of cluster.members) {
+            if (!anchorVisibility.has(member.plcSymbol)) continue;
+            const meta = metaBySymbol.get(member.plcSymbol);
+            const live = anchorLive.bySymbol[member.plcSymbol];
+            rows.push({
+              cnName: member.cnName ?? meta?.cnName ?? member.partId,
+              value: live ? live.value : null,
+              dataType: meta?.dataType
+            });
+          }
+          if (rows.length === 0) return null;
           return (
-            <MeshPlcLabelOverlay
-              key={anchor.plcSymbol}
-              trackerRef={getAnchorTrackerRef(anchor.plcSymbol)}
-              cnName={anchor.cnName ?? meta?.cnName ?? anchor.partId}
-              value={value}
-              dataType={meta?.dataType}
+            <MeshPlcLabelBannerOverlay
+              key={cluster.positionKey}
+              trackerRef={getClusterTrackerRef(cluster.positionKey)}
+              rows={rows}
             />
           );
         })}

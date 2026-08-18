@@ -1728,9 +1728,9 @@ pre {
   pointer-events: none;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 1px;
-  padding: 4px 8px;
+  padding: 5px 8px 6px;
   font-size: 11.5px;
   font-weight: 600;
   color: #f7fbfb;
@@ -1755,22 +1755,53 @@ pre {
   border-top: 5px solid rgba(114, 214, 201, 0.45);
 }
 
-.mesh-plc-label-name {
+.mesh-plc-label-banner {
+  min-width: 120px;
+  max-width: 220px;
+}
+
+.mesh-plc-label-banner-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mesh-plc-label-banner-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.mesh-plc-label-banner-row-name {
   color: rgba(231, 243, 244, 0.85);
-  font-size: 10.5px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
-.mesh-plc-label-value {
+.mesh-plc-label-banner-row-value {
   font-family: "JetBrains Mono", "Consolas", "Courier New", monospace;
-  font-size: 12.5px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.mesh-plc-label-en {
-  color: rgba(231, 243, 244, 0.5);
-  font-size: 9.5px;
-  font-weight: 400;
-  font-family: "JetBrains Mono", "Consolas", "Courier New", monospace;
+.mesh-plc-label-banner-row-value.tone-ok {
+  color: #a9f2c8;
+}
+.mesh-plc-label-banner-row-value.tone-err {
+  color: #ff9c8e;
+}
+.mesh-plc-label-banner-row-value.tone-muted {
+  color: rgba(231, 243, 244, 0.55);
+}
+.mesh-plc-label-banner-row-value.tone-number {
+  color: #72d6c9;
 }
 
 .mesh-plc-label.tone-ok {
@@ -1779,18 +1810,12 @@ pre {
 .mesh-plc-label.tone-ok::after {
   border-top-color: #39d98a;
 }
-.mesh-plc-label.tone-ok .mesh-plc-label-value {
-  color: #a9f2c8;
-}
 
 .mesh-plc-label.tone-err {
   border-color: #ff6c5c;
 }
 .mesh-plc-label.tone-err::after {
   border-top-color: #ff6c5c;
-}
-.mesh-plc-label.tone-err .mesh-plc-label-value {
-  color: #ff9c8e;
 }
 
 .mesh-plc-label.tone-muted {
@@ -1799,16 +1824,10 @@ pre {
 .mesh-plc-label.tone-muted::after {
   border-top-color: rgba(231, 243, 244, 0.25);
 }
-.mesh-plc-label.tone-muted .mesh-plc-label-value {
-  color: rgba(231, 243, 244, 0.55);
-}
 
 .mesh-plc-label.tone-number {
   border-color: #4ec9b0;
 }
 .mesh-plc-label.tone-number::after {
   border-top-color: #4ec9b0;
-}
-.mesh-plc-label.tone-number .mesh-plc-label-value {
-  color: #72d6c9;
 }

@@ -13,7 +13,7 @@ export type MeshPlcLabelTrackerRef = {
   dirty: boolean;
 };
 
-export type MeshPlcLabelTrackerProps = {
+export type MeshPlcLabelBannerTrackerProps = {
   /** GLB scene root. Required when using `meshName`. */
   sceneRoot?: THREE.Object3D | null;
   /** Mesh name to look up via `sceneRoot.traverse()`. */
@@ -34,13 +34,13 @@ export type MeshPlcLabelTrackerProps = {
  *   2. Otherwise use `worldPosition` directly.
  *   3. If neither is available, the label stays hidden.
  */
-export function MeshPlcLabelTracker({
+export function MeshPlcLabelBannerTracker({
   sceneRoot,
   meshName,
   worldPosition,
   offset,
   trackerRef
-}: MeshPlcLabelTrackerProps) {
+}: MeshPlcLabelBannerTrackerProps) {
   const { camera, gl } = useThree();
   const targetRef = useRef<THREE.Object3D | null>(null);
   const scratch = useRef(new THREE.Vector3());
@@ -98,26 +98,29 @@ export function MeshPlcLabelTracker({
   return null;
 }
 
-export type MeshPlcLabelOverlayProps = {
-  trackerRef: MutableRefObject<MeshPlcLabelTrackerRef>;
+export type BannerRow = {
   cnName: string;
-  enName?: string;
   value: unknown;
   dataType?: string;
+};
+
+export type MeshPlcLabelBannerOverlayProps = {
+  trackerRef: MutableRefObject<MeshPlcLabelTrackerRef>;
+  rows: BannerRow[];
 };
 
 /**
  * Lives OUTSIDE the R3F Canvas (sibling of the canvas element). Reads the
  * trackerRef every animation frame and translates a single absolute-positioned
  * div — no React re-renders on camera move.
+ *
+ * 渲染多个数据点为水平行 (`cnName | value`)；簇内有 N 个成员时显示 N 行，
+ * 单元素锚点显示 1 行。每个 value 用各自的 tone 颜色 (ok/err/muted/number)。
  */
-export function MeshPlcLabelOverlay({
+export function MeshPlcLabelBannerOverlay({
   trackerRef,
-  cnName,
-  enName,
-  value,
-  dataType
-}: MeshPlcLabelOverlayProps) {
+  rows
+}: MeshPlcLabelBannerOverlayProps) {
   const elRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -136,17 +139,27 @@ export function MeshPlcLabelOverlay({
     return () => cancelAnimationFrame(raf);
   }, [trackerRef]);
 
-  const formatted = formatLabelValue(value, dataType);
-
   return (
     <div
       ref={elRef}
-      className={`mesh-plc-label tone-${formatted.tone}`}
+      className="mesh-plc-label mesh-plc-label-banner"
       style={{ display: "none" }}
     >
-      <span className="mesh-plc-label-name">{cnName}</span>
-      <span className="mesh-plc-label-value">{formatted.text}</span>
-      {enName && <span className="mesh-plc-label-en">{enName}</span>}
+      <ul className="mesh-plc-label-banner-rows">
+        {rows.map((row, index) => {
+          const formatted = formatLabelValue(row.value, row.dataType);
+          return (
+            <li key={index} className="mesh-plc-label-banner-row">
+              <span className="mesh-plc-label-banner-row-name">{row.cnName}</span>
+              <span
+                className={`mesh-plc-label-banner-row-value tone-${formatted.tone}`}
+              >
+                {formatted.text}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
