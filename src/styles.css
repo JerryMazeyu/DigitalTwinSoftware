@@ -507,10 +507,6 @@ button {
   height: auto;
 }
 
-.machine-panel-fill .machine-metrics {
-  flex: 0 0 auto;
-}
-
 .model-layer-control {
   position: absolute;
   z-index: 3;
@@ -604,17 +600,32 @@ button {
 
 .anchor-category-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
   padding: 4px 6px 2px;
   margin-top: 4px;
   font-size: 11px;
   font-weight: 500;
   color: #b6dad6;
   border-bottom: 1px solid rgba(145, 216, 207, 0.18);
+  cursor: pointer;
+}
+
+.anchor-category-header:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.anchor-category-header input[type="checkbox"] {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  accent-color: #72d6c9;
+  cursor: pointer;
 }
 
 .anchor-category-header em {
+  margin-left: auto;
   font-style: normal;
   font-size: 10px;
   opacity: 0.65;
@@ -629,61 +640,32 @@ button {
   border-top: 1px solid rgba(145, 216, 207, 0.18);
 }
 
-.machine-overlay {
+.machine-fullscreen-toggle {
   position: absolute;
-  left: 12px;
+  z-index: 3;
   right: 12px;
   bottom: 12px;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  pointer-events: none;
-}
-
-.machine-overlay div,
-.machine-metrics div {
   display: inline-flex;
   align-items: center;
-  min-width: 0;
-  gap: 6px;
-  min-height: 34px;
-  padding: 0 9px;
-  color: #e9fbf8;
-  background: rgba(18, 43, 50, 0.76);
-  border: 1px solid rgba(145, 216, 207, 0.22);
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: #d7f4ef;
+  background: rgba(18, 43, 50, 0.82);
+  border: 1px solid rgba(145, 216, 207, 0.28);
   border-radius: 7px;
   backdrop-filter: blur(8px);
-  font-size: 12px;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
 }
 
-.machine-overlay div {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.machine-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  padding: 11px 13px 13px;
-  background: #12242a;
-}
-
-.machine-metrics div {
-  justify-content: space-between;
-  min-height: 42px;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.machine-metrics span {
-  color: rgba(236, 246, 246, 0.68);
-  font-size: 12px;
-}
-
-.machine-metrics strong {
-  color: #ffffff;
-  font-size: 14px;
+.machine-fullscreen-toggle:hover,
+.machine-fullscreen-toggle:focus-visible {
+  color: #102329;
+  background: #72d6c9;
+  border-color: #72d6c9;
+  outline: none;
 }
 
 .risk-chip {
@@ -1150,11 +1132,6 @@ pre {
   .panel-header {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .machine-overlay,
-  .machine-metrics {
-    grid-template-columns: 1fr;
   }
 
   .image-scroll {

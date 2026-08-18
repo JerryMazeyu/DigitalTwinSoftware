@@ -1,5 +1,5 @@
 import { Canvas, extend, useFrame, useThree, type ReactThreeFiber } from "@react-three/fiber";
-import { Activity, Anchor, Gauge, Layers3, RadioTower, ScanLine } from "lucide-react";
+import { Anchor, Layers3, Maximize2, Minimize2 } from "lucide-react";
 import { Component, Suspense, useEffect, useMemo, useRef, useState, type PropsWithChildren, type ReactNode } from "react";
 import * as THREE from "three";
 import { OrbitControls as ThreeOrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -28,6 +28,9 @@ declare module "@react-three/fiber" {
 
 const DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 0.72, 12];
 const DEFAULT_CAMERA_TARGET = new THREE.Vector3(0, 0.72, 0);
+// 全屏下相机往后拉，让模型在更大的视口里看起来更小（更多留白）。
+// 12 → 20：模型宽度约 8.8 单位，全屏下视野横向约 17.6，模型占视口 ~50%。
+const FULLSCREEN_CAMERA_POSITION: [number, number, number] = [0, 0.72, 20];
 
 type TwinMachine3DProps = {
   machine: MachineStatus;
@@ -57,16 +60,19 @@ class ModelErrorBoundary extends Component<PropsWithChildren<{ fallback: ReactNo
   }
 }
 
-function FreeCameraControls() {
+function FreeCameraControls({ isFullscreen }: { isFullscreen: boolean }) {
   const { camera, gl } = useThree();
   const controls = useRef<ThreeOrbitControls>(null);
 
   useEffect(() => {
-    camera.position.set(...DEFAULT_CAMERA_POSITION);
-    camera.lookAt(DEFAULT_CAMERA_TARGET);
+    // 全屏下相机往后拉，让模型在更大的视口里看起来更小（更多留白）。
+    const position = isFullscreen ? FULLSCREEN_CAMERA_POSITION : DEFAULT_CAMERA_POSITION;
+    const target = DEFAULT_CAMERA_TARGET;
+    camera.position.set(...position);
+    camera.lookAt(target);
 
     if (controls.current) {
-      controls.current.target.copy(DEFAULT_CAMERA_TARGET);
+      controls.current.target.copy(target);
       controls.current.enableDamping = true;
       controls.current.dampingFactor = 0.08;
       controls.current.enablePan = true;
@@ -75,14 +81,15 @@ function FreeCameraControls() {
       controls.current.zoomSpeed = 0.9;
       controls.current.panSpeed = 0.45;
       controls.current.minDistance = 2.4;
-      controls.current.maxDistance = 9.2;
+      // 全屏下放大 zoom 上限，让用户能拉到更远继续看缩放后的模型
+      controls.current.maxDistance = isFullscreen ? 28 : 9.2;
       controls.current.minPolarAngle = Math.PI / 3.2;
       controls.current.maxPolarAngle = Math.PI / 2.04;
       controls.current.minAzimuthAngle = -Math.PI / 2.6;
       controls.current.maxAzimuthAngle = Math.PI / 2.6;
     }
     controls.current?.update();
-  }, [camera]);
+  }, [camera, isFullscreen]);
 
   useFrame(() => {
     controls.current?.update();
@@ -376,8 +383,28 @@ function RealModelScene({
   );
 }
 
-export function TwinMachine3D({ machine, riskLevel, health, compact = false }: TwinMachine3DProps) {
-  const onlineCount = useMemo(() => health.filter((item) => item.online).length, [health]);
+export function TwinMachine3D({ machine, riskLevel, health: _health, compact = false }: TwinMachine3DProps) {
+  // 全屏按钮——把整个 .machine-canvas 容器（含图层/锚点按钮、Canvas、
+  // banner overlays）一次性全屏显示。fullscreenchange 事件负责让按钮图
+  // 标在「进入/退出」之间切换，跟随浏览器原生状态。
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    const handler = () =>
+      setIsFullscreen(document.fullscreenElement === canvasContainerRef.current);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+  const toggleFullscreen = () => {
+    const target = canvasContainerRef.current;
+    if (!target) return;
+    if (document.fullscreenElement === target) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      target.requestFullscreen().catch(() => {});
+    }
+  };
+
   const [layerPanelOpen, setLayerPanelOpen] = useState(false);
   const [visibleLayerIds, setVisibleLayerIds] = useState<CoaterModelLayerId[]>(() => createAllLayerSelection());
   const [coaterScene, setCoaterScene] = useState<THREE.Object3D | null>(null);
@@ -405,6 +432,20 @@ export function TwinMachine3D({ machine, riskLevel, health, compact = false }: T
       const next = new Set(prev);
       if (next.has(plcSymbol)) next.delete(plcSymbol);
       else next.add(plcSymbol);
+      return next;
+    });
+
+  // 整组切换：当前全开时一键全关；其它情况（全关/部分开）一键全开。
+  const toggleAnchorGroup = (categoryEn: string) =>
+    setAnchorVisibility((prev) => {
+      const items = anchorCandidates.filter((a) => a.categoryEn === categoryEn);
+      const allOn = items.length > 0 && items.every((a) => prev.has(a.plcSymbol));
+      const next = new Set(prev);
+      if (allOn) {
+        for (const a of items) next.delete(a.plcSymbol);
+      } else {
+        for (const a of items) next.add(a.plcSymbol);
+      }
       return next;
     });
 
@@ -448,7 +489,16 @@ export function TwinMachine3D({ machine, riskLevel, health, compact = false }: T
           {machine.status === "control-pending" ? "只读监控" : "设备联动"}
         </span>
       </div>
-      <div className={compact ? "machine-canvas machine-canvas-fill" : "machine-canvas"}>
+      <div ref={canvasContainerRef} className={compact ? "machine-canvas machine-canvas-fill" : "machine-canvas"}>
+        <button
+          type="button"
+          className="machine-fullscreen-toggle"
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "退出全屏" : "进入全屏"}
+          aria-label={isFullscreen ? "退出全屏" : "进入全屏"}
+        >
+          {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+        </button>
         <div className="model-layer-control">
           <button
             className={layerPanelOpen ? "active" : ""}
@@ -503,21 +553,36 @@ export function TwinMachine3D({ machine, riskLevel, health, compact = false }: T
                   清空
                 </button>
               </div>
-              {(["SputterPowerActual", "WindingActual", "IonSourceActual", "TemperatureOrColdTrap"] as const).map((cat) => {
+              {(["SputterPowerActual", "WindingActual", "VacuumGauge", "IonSourceActual", "TemperatureOrColdTrap"] as const).map((cat) => {
                 const items = anchorCandidates.filter((a) => a.categoryEn === cat);
                 if (items.length === 0) return null;
+                const onCount = items.filter((a) => anchorVisibility.has(a.plcSymbol)).length;
+                const allOn = onCount === items.length;
+                const allOff = onCount === 0;
                 const categoryLabels: Record<typeof cat, string> = {
                   SputterPowerActual: "溅射电源",
                   WindingActual: "卷绕",
+                  VacuumGauge: "真空规读数",
                   IonSourceActual: "离子源",
                   TemperatureOrColdTrap: "温度 · 冷捕集"
                 };
                 return (
                   <div key={cat} className="anchor-category">
-                    <div className="anchor-category-header">
+                    <label
+                      className="anchor-category-header"
+                      title={allOn ? "关闭整组" : allOff ? "开启整组" : "同步开启整组"}
+                    >
+                      <input
+                        type="checkbox"
+                        ref={(el) => {
+                          if (el) el.indeterminate = !allOn && !allOff;
+                        }}
+                        checked={allOn}
+                        onChange={() => toggleAnchorGroup(cat)}
+                      />
                       <span>{categoryLabels[cat]}</span>
                       <em>{items.length} 项</em>
-                    </div>
+                    </label>
                     {items.map((anchor) => {
                       const meta = metaBySymbol.get(anchor.plcSymbol);
                       const label = anchor.cnName ?? meta?.cnName ?? anchor.partId;
@@ -542,7 +607,7 @@ export function TwinMachine3D({ machine, riskLevel, health, compact = false }: T
           )}
         </div>
         <Canvas camera={{ position: DEFAULT_CAMERA_POSITION, fov: 30 }} shadows>
-          <FreeCameraControls />
+          <FreeCameraControls isFullscreen={isFullscreen} />
           <ModelErrorBoundary fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
             <Suspense fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
               <RealModelScene
@@ -578,17 +643,6 @@ export function TwinMachine3D({ machine, riskLevel, health, compact = false }: T
             />
           );
         })}
-        <div className="machine-overlay">
-          <div><Activity size={15} />线速 {machine.lineSpeed} m/min</div>
-          <div><Gauge size={15} />张力 {machine.tension} N</div>
-          <div><ScanLine size={15} />检测段 K2+14.6m</div>
-          <div><RadioTower size={15} />链路 {onlineCount}/{health.length} 在线</div>
-        </div>
-      </div>
-      <div className="machine-metrics">
-        <div><span>温度</span><strong>{machine.temperature} C</strong></div>
-        <div><span>真空度</span><strong>{machine.vacuum} MPa</strong></div>
-        <div><span>功率</span><strong>{machine.power} kW</strong></div>
       </div>
     </section>
   );
