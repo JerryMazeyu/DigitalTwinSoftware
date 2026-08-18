@@ -64,52 +64,55 @@ const sputter: PlcAnchorConfigEntry[] = [
 // 卷绕轴速度 1–5、张力 1–4、收/放卷半径——沿长 X 轴在辊轮高度
 //（世界坐标 Y ≈ 1.0）分布，Z 靠近模型前方，让标签浮在辊轮上方。
 const winding: PlcAnchorConfigEntry[] = [
-  // 5 个轴速度（X 在机架上均匀分布）
-  { plcSymbol: "HMI_Act_Vel_Axis_1", partId: "Axis_1", categoryEn: "WindingActual", worldPosition: [-3.6, 1.0, 0.6], defaultVisible: true },
-  { plcSymbol: "HMI_Act_Vel_Axis_2", partId: "Axis_2", categoryEn: "WindingActual", worldPosition: [-2.4, 1.0, 0.6], defaultVisible: true },
-  { plcSymbol: "HMI_Act_Vel_Axis_3", partId: "Axis_3", categoryEn: "WindingActual", worldPosition: [-1.2, 1.0, 0.6], defaultVisible: true },
-  { plcSymbol: "HMI_Act_Vel_Axis_4", partId: "Axis_4", categoryEn: "WindingActual", worldPosition: [ 1.2, 1.0, 0.6], defaultVisible: true },
-  { plcSymbol: "HMI_Act_Vel_Axis_5", partId: "Axis_5", categoryEn: "WindingActual", worldPosition: [ 3.6, 1.0, 0.6], defaultVisible: true },
-  // 4 个张力（前侧，Y 较低让标签贴在膜上）
-  { plcSymbol: "Tension_1", partId: "Roller_TensionFro", categoryEn: "WindingActual", worldPosition: [-2.7, 0.6, 0.7], defaultVisible: true },
-  { plcSymbol: "Tension_2", partId: "Roller_TensionFro_2", categoryEn: "WindingActual", worldPosition: [-0.9, 0.6, 0.7], defaultVisible: true },
-  { plcSymbol: "Tension_3", partId: "Roller_TensionBak", categoryEn: "WindingActual", worldPosition: [ 0.9, 0.6, 0.7], defaultVisible: true },
-  { plcSymbol: "Tension_4", partId: "Roller_TensionBak_2", categoryEn: "WindingActual", worldPosition: [ 2.7, 0.6, 0.7], defaultVisible: true },
-  // 2 个半径（卷筒，位于两端）
-  { plcSymbol: "HMI_Act_Wind_R",   partId: "Roller_Wind",   categoryEn: "WindingActual", worldPosition: [ 3.7, 0.9, 0.4], defaultVisible: true },
-  { plcSymbol: "HMI_Act_Unwind_R", partId: "Roller_Unwind", categoryEn: "WindingActual", worldPosition: [-3.7, 0.9, 0.4], defaultVisible: true }
+  // 5 个轴速度 分别对应A1、A2、A3、A4、A5 五个滚子 （已调好）
+  { plcSymbol: "HMI_Act_Vel_Axis_1", partId: "Axis_1", categoryEn: "WindingActual", worldPosition: [ 0.75, 0.5, 0.6], defaultVisible: true },
+  { plcSymbol: "HMI_Act_Vel_Axis_2", partId: "Axis_2", categoryEn: "WindingActual", worldPosition: [ -4, 0.1, 0.6], defaultVisible: true },
+  { plcSymbol: "HMI_Act_Vel_Axis_3", partId: "Axis_3", categoryEn: "WindingActual", worldPosition: [ 4, 0.1, 0.6], defaultVisible: true },
+  { plcSymbol: "HMI_Act_Vel_Axis_4", partId: "Axis_4", categoryEn: "WindingActual", worldPosition: [ 1.0, 1.7, 0.6], defaultVisible: true },
+  { plcSymbol: "HMI_Act_Vel_Axis_5", partId: "Axis_5", categoryEn: "WindingActual", worldPosition: [ 0.5, 1.7, 0.6], defaultVisible: true },
+  // 4 个张力（前侧，Y 较低让标签贴在膜上）分别对应A2、A3、A4、A5 四个滚子 和 A2、A3、A4、A5 四个滚子 数据坐标一致 （已调好）
+  { plcSymbol: "Tension_1", partId: "Roller_TensionFro", categoryEn: "WindingActual", worldPosition: [-4, 0.1, 0.6], defaultVisible: true },
+  { plcSymbol: "Tension_2", partId: "Roller_TensionFro_2", categoryEn: "WindingActual", worldPosition: [4, 0.1, 0.6], defaultVisible: true },
+  { plcSymbol: "Tension_3", partId: "Roller_TensionBak", categoryEn: "WindingActual", worldPosition: [ 1.0, 1.7, 0.6], defaultVisible: true },
+  { plcSymbol: "Tension_4", partId: "Roller_TensionBak_2", categoryEn: "WindingActual", worldPosition: [ 0.5, 1.7, 0.6], defaultVisible: true},
+  // 2 个半径（卷筒，位于两端）分别对应A2 和 A3，和A2、A3数据坐标一致（已调好）
+  { plcSymbol: "HMI_Act_Wind_R",   partId: "Roller_Wind",   categoryEn: "WindingActual", worldPosition: [-4, 0.1, 0.6], defaultVisible: true },
+  { plcSymbol: "HMI_Act_Unwind_R", partId: "Roller_Unwind", categoryEn: "WindingActual", worldPosition: [4, 0.1, 0.6], defaultVisible: true }
 ];
 
 // ---------- Ion source actuals (2) ----------
 // 离子源电流 / 电压反馈——浮在机器中心上方。
 const ionSource: PlcAnchorConfigEntry[] = [
-  { plcSymbol: "dbEvapSwitch_fIONCur", partId: "IonSource", categoryEn: "IonSourceActual", worldPosition: [0, 2.5, 0.6], defaultVisible: true },
-  { plcSymbol: "dbEvapSwitch_fIONVol", partId: "IonSource", categoryEn: "IonSourceActual", worldPosition: [0, 2.5, 0.6], offset: [0.55, 0, 0], defaultVisible: true }
+  { plcSymbol: "dbEvapSwitch_fIONCur", partId: "IonSource", categoryEn: "IonSourceActual", worldPosition: [0, 2.5, 0.6], defaultVisible: false },
+  { plcSymbol: "dbEvapSwitch_fIONVol", partId: "IonSource", categoryEn: "IonSourceActual", worldPosition: [0, 2.5, 0.6], offset: [0.55, 0, 0], defaultVisible: false }
 ];
 
-// ---------- Vacuum gauges (26) ----------
-// 真空规 G1–G26——沿 X 轴在腔体高度分布，Z 前后交替以保持标签可读。
-// defaultVisible: false 表示开关面板不会列出这些（配置 > 开关面板）；
-// 位置确定后改回 true 即可纳入面板。
-const vacuumGauges: PlcAnchorConfigEntry[] = Array.from({ length: 26 }, (_, i) => {
-  const x = -3.4 + (i / 25) * 6.8;                       // 在机架上均匀分布
-  const z = i % 2 === 0 ? 0.6 : -0.6;                    // 前后交替
-  const gaugeNo = i + 1;
-  return {
-    plcSymbol: `dbGauge_fData[${i}]`,
-    partId: `Gauge_G${gaugeNo}`,
-    categoryEn: "VacuumGauge" as const,
-    worldPosition: [x, 1.4, z] as AnchorWorldPosition,
-    defaultVisible: false
-  };
-});
+// ---------- Vacuum gauges (G8–G19 only) ----------
+// 真空规 G8–G19（索引 188–199）——用户当前只关心这一段；G1–G7 和
+// G20–G26 暂不挂载，需要时再加回。沿 X 轴在腔体高度（Y = 1.4）分布，
+// Z 前后交替以保持标签可读。defaultVisible: false 表示开关面板不会
+// 列出这些（配置 > 开关面板）；位置确定后改回 true 即可纳入面板。
+const vacuumGauges: PlcAnchorConfigEntry[] = [
+  { plcSymbol: "dbGauge_fData[7]",  partId: "Gauge_G8",  categoryEn: "VacuumGauge", worldPosition: [-1.53, 1.4, -0.6], defaultVisible: false },
+  { plcSymbol: "dbGauge_fData[8]",  partId: "Gauge_G9",  categoryEn: "VacuumGauge", worldPosition: [-1.27, 1.4,  0.6], defaultVisible: false },
+  { plcSymbol: "dbGauge_fData[9]",  partId: "Gauge_G10", categoryEn: "VacuumGauge", worldPosition: [-1.00, 1.4, -0.6], defaultVisible: false },
+  { plcSymbol: "dbGauge_fData[10]", partId: "Gauge_G11", categoryEn: "VacuumGauge", worldPosition: [-0.73, 1.4,  0.6], defaultVisible: false },
+  { plcSymbol: "dbGauge_fData[11]", partId: "Gauge_G12", categoryEn: "VacuumGauge", worldPosition: [-0.47, 1.4, -0.6], defaultVisible: false },
+  { plcSymbol: "dbGauge_fData[12]", partId: "Gauge_G13", categoryEn: "VacuumGauge", worldPosition: [-0.20, 1.4,  0.6], defaultVisible: false },
+  { plcSymbol: "dbGauge_fData[13]", partId: "Gauge_G14", categoryEn: "VacuumGauge", worldPosition: [ 0.07, 1.4, -0.6], defaultVisible: false },
+  { plcSymbol: "dbGauge_fData[14]", partId: "Gauge_G15", categoryEn: "VacuumGauge", worldPosition: [ 0.33, 1.4,  0.6], defaultVisible: false },
+  { plcSymbol: "dbGauge_fData[15]", partId: "Gauge_G16", categoryEn: "VacuumGauge", worldPosition: [ 0.60, 1.4, -0.6], defaultVisible: false },
+  { plcSymbol: "dbGauge_fData[16]", partId: "Gauge_G17", categoryEn: "VacuumGauge", worldPosition: [ 0.87, 1.4,  0.6], defaultVisible: false },
+  { plcSymbol: "dbGauge_fData[17]", partId: "Gauge_G18", categoryEn: "VacuumGauge", worldPosition: [ 1.13, 1.4, -0.6], defaultVisible: false },
+  { plcSymbol: "dbGauge_fData[18]", partId: "Gauge_G19", categoryEn: "VacuumGauge", worldPosition: [ 1.40, 1.4,  0.6], defaultVisible: false }
+];
 
 // ---------- Temperature / cold trap (3) ----------
 // 温度 · 冷捕集——主辊温度反馈 (PolyCold), 预加热 1/2 (Heater_H1/H2)。
 const tempColdTrap: PlcAnchorConfigEntry[] = [
-  { plcSymbol: "dbMaRollPar_fTemp", partId: "PolyCold",  categoryEn: "TemperatureOrColdTrap", worldPosition: [-2.5, 1.0, 0.0], defaultVisible: true },
-  { plcSymbol: "dbHf_ParPV1",       partId: "Heater_H1", categoryEn: "TemperatureOrColdTrap", worldPosition: [-1.0, 1.5, 0.6], defaultVisible: true },
-  { plcSymbol: "dbHf_ParPV2",       partId: "Heater_H2", categoryEn: "TemperatureOrColdTrap", worldPosition: [ 1.0, 1.5, 0.6], defaultVisible: true }
+  { plcSymbol: "dbMaRollPar_fTemp", partId: "PolyCold",  categoryEn: "TemperatureOrColdTrap", worldPosition: [-2.5, 1.0, 0.0], defaultVisible: false },
+  { plcSymbol: "dbHf_ParPV1",       partId: "Heater_H1", categoryEn: "TemperatureOrColdTrap", worldPosition: [-1.0, 1.5, 0.6], defaultVisible: false },
+  { plcSymbol: "dbHf_ParPV2",       partId: "Heater_H2", categoryEn: "TemperatureOrColdTrap", worldPosition: [ 1.0, 1.5, 0.6], defaultVisible: false }
 ];
 
 export const PLC_ANCHOR_CONFIG: PlcAnchorConfigEntry[] = [
