@@ -164,7 +164,7 @@ export function MeshPlcLabelBannerOverlay({
   );
 }
 
-const formatLabelValue = (
+export const formatLabelValue = (
   value: unknown,
   dataType?: string
 ): { text: string; tone: "ok" | "err" | "muted" | "number" } => {

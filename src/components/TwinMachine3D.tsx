@@ -8,11 +8,11 @@ import { CoaterObjModel } from "./CoaterObjModel";
 import { coaterModelLayers, createAllLayerSelection, toggleLayerSelection, type CoaterModelLayerId } from "../domain/modelLayers";
 import type { MachineStatus, RiskLevel, SystemHealth } from "../domain/models";
 import {
-  MeshPlcLabelBannerOverlay,
   MeshPlcLabelBannerTracker,
-  type BannerRow,
   type MeshPlcLabelTrackerRef
 } from "./sensorBoard/MeshPlcLabel";
+import { ClusterDotOverlay } from "./sensorBoard/ClusterDotOverlay";
+import { ClusterDataPanel } from "./sensorBoard/ClusterDataPanel";
 import { usePlcSensors } from "../hooks/usePlcSensors";
 import { PLC_ANCHOR_CONFIG } from "../data/plcAnchorConfig";
 import { clusterAnchorsByPosition, type AnchorCluster } from "../data/plcAnchorClusters";
@@ -462,6 +462,14 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, compact = f
     [visibleAnchors]
   );
 
+  // 全部锚点（按 PLC_ANCHOR_CONFIG 的全部条目，无论是否 defaultVisible）——
+  // 右侧数据面板按此渲染，每个锚点一行。隐藏的会以 "—" 提示该位置有数据但未在轮询。
+  const allAnchors = useMemo(() => PLC_ANCHOR_CONFIG, []);
+
+  // 当前被 hover 的 cluster key——3D 上的小圆点和右侧数据面板共用同一状态，
+  // 一方 hover 时另一方同步高亮。
+  const [hoveredClusterKey, setHoveredClusterKey] = useState<string | null>(null);
+
   // 每个簇对应一个 ref，按需懒创建——key 为簇的位置键。
   const clusterTrackerRefs = useRef<Record<string, MeshPlcLabelTrackerRef>>({});
   const getClusterTrackerRef = (positionKey: string): React.MutableRefObject<MeshPlcLabelTrackerRef> => {
@@ -489,160 +497,183 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, compact = f
           {machine.status === "control-pending" ? "只读监控" : "设备联动"}
         </span>
       </div>
-      <div ref={canvasContainerRef} className={compact ? "machine-canvas machine-canvas-fill" : "machine-canvas"}>
-        <button
-          type="button"
-          className="machine-fullscreen-toggle"
-          onClick={toggleFullscreen}
-          title={isFullscreen ? "退出全屏" : "进入全屏"}
-          aria-label={isFullscreen ? "退出全屏" : "进入全屏"}
-        >
-          {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-        </button>
-        <div className="model-layer-control">
+      <div
+        ref={canvasContainerRef}
+        className={
+          compact
+            ? "machine-canvas machine-canvas-grid machine-canvas-fill"
+            : "machine-canvas machine-canvas-grid"
+        }
+        // 阻止浏览器对画布上的按钮 / 文字 / SVG 触发默认拖拽行为
+        //（否则会把"锚点"等按钮文字拖成新的标签页，干扰 OrbitControls）。
+        onDragStart={(e) => e.preventDefault()}
+      >
+        <div className="machine-canvas-main">
           <button
-            className={layerPanelOpen ? "active" : ""}
             type="button"
-            onClick={() => setLayerPanelOpen((open) => !open)}
-            title="显示或隐藏模型图层"
+            className="machine-fullscreen-toggle"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "退出全屏" : "进入全屏"}
+            aria-label={isFullscreen ? "退出全屏" : "进入全屏"}
           >
-            <Layers3 size={15} />
-            <span>图层</span>
+            {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
           </button>
-          {layerPanelOpen && (
-            <div className="model-layer-popover">
-              <div className="layer-actions">
-                <button type="button" onClick={() => setVisibleLayerIds(createAllLayerSelection())}>全部</button>
+          <div className="model-layer-control model-layer-control-left">
+            <button
+              className={layerPanelOpen ? "active" : ""}
+              type="button"
+              onClick={() => setLayerPanelOpen((open) => !open)}
+              title="显示或隐藏模型图层"
+            >
+              <Layers3 size={15} />
+              <span>图层</span>
+            </button>
+            {layerPanelOpen && (
+              <div className="model-layer-popover">
+                <div className="layer-actions">
+                  <button type="button" onClick={() => setVisibleLayerIds(createAllLayerSelection())}>全部</button>
+                </div>
+                {coaterModelLayers.map((layer) => (
+                  <label key={layer.id}>
+                    <input
+                      checked={visibleLayerIds.includes(layer.id)}
+                      type="checkbox"
+                      onChange={() => setVisibleLayerIds((current) => toggleLayerSelection(current, layer.id))}
+                    />
+                    <span>{layer.label}</span>
+                  </label>
+                ))}
               </div>
-              {coaterModelLayers.map((layer) => (
-                <label key={layer.id}>
-                  <input
-                    checked={visibleLayerIds.includes(layer.id)}
-                    type="checkbox"
-                    onChange={() => setVisibleLayerIds((current) => toggleLayerSelection(current, layer.id))}
-                  />
-                  <span>{layer.label}</span>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="model-layer-control">
-          <button
-            className={anchorPanelOpen ? "active" : ""}
-            type="button"
-            onClick={() => setAnchorPanelOpen((open) => !open)}
-            title="临时切换 PLC 数据点锚点的显示"
-          >
-            <Anchor size={15} />
-            <span>锚点</span>
-          </button>
-          {anchorPanelOpen && (
-            <div className="model-layer-popover">
-              <div className="layer-actions">
-                <button
-                  type="button"
-                  onClick={() => setAnchorVisibility(new Set(anchorCandidates.map((a) => a.plcSymbol)))}
-                >
-                  全部
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAnchorVisibility(new Set())}
-                >
-                  清空
-                </button>
+            )}
+          </div>
+          <div className="model-layer-control model-layer-control-left">
+            <button
+              className={anchorPanelOpen ? "active" : ""}
+              type="button"
+              onClick={() => setAnchorPanelOpen((open) => !open)}
+              title="临时切换 PLC 数据点锚点的显示"
+            >
+              <Anchor size={15} />
+              <span>锚点</span>
+            </button>
+            {anchorPanelOpen && (
+              <div className="model-layer-popover">
+                <div className="layer-actions">
+                  <button
+                    type="button"
+                    onClick={() => setAnchorVisibility(new Set(anchorCandidates.map((a) => a.plcSymbol)))}
+                  >
+                    全部
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnchorVisibility(new Set())}
+                  >
+                    清空
+                  </button>
+                </div>
+                {(["SputterPowerActual", "WindingActual", "VacuumGauge", "IonSourceActual", "TemperatureOrColdTrap"] as const).map((cat) => {
+                  const items = anchorCandidates.filter((a) => a.categoryEn === cat);
+                  if (items.length === 0) return null;
+                  const onCount = items.filter((a) => anchorVisibility.has(a.plcSymbol)).length;
+                  const allOn = onCount === items.length;
+                  const allOff = onCount === 0;
+                  const categoryLabels: Record<typeof cat, string> = {
+                    SputterPowerActual: "溅射电源",
+                    WindingActual: "卷绕",
+                    VacuumGauge: "真空规读数",
+                    IonSourceActual: "离子源",
+                    TemperatureOrColdTrap: "温度 · 冷捕集"
+                  };
+                  return (
+                    <div key={cat} className="anchor-category">
+                      <label
+                        className="anchor-category-header"
+                        title={allOn ? "关闭整组" : allOff ? "开启整组" : "同步开启整组"}
+                      >
+                        <input
+                          type="checkbox"
+                          ref={(el) => {
+                            if (el) el.indeterminate = !allOn && !allOff;
+                          }}
+                          checked={allOn}
+                          onChange={() => toggleAnchorGroup(cat)}
+                        />
+                        <span>{categoryLabels[cat]}</span>
+                        <em>{items.length} 项</em>
+                      </label>
+                      {items.map((anchor) => {
+                        const meta = metaBySymbol.get(anchor.plcSymbol);
+                        const label = anchor.cnName ?? meta?.cnName ?? anchor.partId;
+                        return (
+                          <label key={anchor.plcSymbol} title={anchor.partId}>
+                            <input
+                              checked={anchorVisibility.has(anchor.plcSymbol)}
+                              type="checkbox"
+                              onChange={() => toggleAnchor(anchor.plcSymbol)}
+                            />
+                            <span>{label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+                <div className="anchor-summary">
+                  可见 {visibleAnchors.length} 项 · 已配置 {anchorCandidates.length} 项
+                </div>
               </div>
-              {(["SputterPowerActual", "WindingActual", "VacuumGauge", "IonSourceActual", "TemperatureOrColdTrap"] as const).map((cat) => {
-                const items = anchorCandidates.filter((a) => a.categoryEn === cat);
-                if (items.length === 0) return null;
-                const onCount = items.filter((a) => anchorVisibility.has(a.plcSymbol)).length;
-                const allOn = onCount === items.length;
-                const allOff = onCount === 0;
-                const categoryLabels: Record<typeof cat, string> = {
-                  SputterPowerActual: "溅射电源",
-                  WindingActual: "卷绕",
-                  VacuumGauge: "真空规读数",
-                  IonSourceActual: "离子源",
-                  TemperatureOrColdTrap: "温度 · 冷捕集"
-                };
-                return (
-                  <div key={cat} className="anchor-category">
-                    <label
-                      className="anchor-category-header"
-                      title={allOn ? "关闭整组" : allOff ? "开启整组" : "同步开启整组"}
-                    >
-                      <input
-                        type="checkbox"
-                        ref={(el) => {
-                          if (el) el.indeterminate = !allOn && !allOff;
-                        }}
-                        checked={allOn}
-                        onChange={() => toggleAnchorGroup(cat)}
-                      />
-                      <span>{categoryLabels[cat]}</span>
-                      <em>{items.length} 项</em>
-                    </label>
-                    {items.map((anchor) => {
-                      const meta = metaBySymbol.get(anchor.plcSymbol);
-                      const label = anchor.cnName ?? meta?.cnName ?? anchor.partId;
-                      return (
-                        <label key={anchor.plcSymbol} title={anchor.partId}>
-                          <input
-                            checked={anchorVisibility.has(anchor.plcSymbol)}
-                            type="checkbox"
-                            onChange={() => toggleAnchor(anchor.plcSymbol)}
-                          />
-                          <span>{label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-              <div className="anchor-summary">
-                可见 {visibleAnchors.length} 项 · 已配置 {anchorCandidates.length} 项
-              </div>
-            </div>
-          )}
-        </div>
-        <Canvas camera={{ position: DEFAULT_CAMERA_POSITION, fov: 30 }} shadows>
-          <FreeCameraControls isFullscreen={isFullscreen} />
-          <ModelErrorBoundary fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
-            <Suspense fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
-              <RealModelScene
-                machine={machine}
-                riskLevel={riskLevel}
-                visibleLayerIds={visibleLayerIds}
-                onScene={setCoaterScene}
-                clusters={visibleClusters}
-                getClusterTrackerRef={getClusterTrackerRef}
-              />
-            </Suspense>
-          </ModelErrorBoundary>
-        </Canvas>
-        {visibleClusters.map((cluster) => {
-          // 只渲染用户仍开启的成员；簇内全关则整个 banner 不渲染。
-          const rows: BannerRow[] = [];
-          for (const member of cluster.members) {
-            if (!anchorVisibility.has(member.plcSymbol)) continue;
-            const meta = metaBySymbol.get(member.plcSymbol);
-            const live = anchorLive.bySymbol[member.plcSymbol];
-            rows.push({
-              cnName: member.cnName ?? meta?.cnName ?? member.partId,
-              value: live ? live.value : null,
-              dataType: meta?.dataType
+            )}
+          </div>
+          <Canvas camera={{ position: DEFAULT_CAMERA_POSITION, fov: 30 }} shadows>
+            <FreeCameraControls isFullscreen={isFullscreen} />
+            <ModelErrorBoundary fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
+              <Suspense fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
+                <RealModelScene
+                  machine={machine}
+                  riskLevel={riskLevel}
+                  visibleLayerIds={visibleLayerIds}
+                  onScene={setCoaterScene}
+                  clusters={visibleClusters}
+                  getClusterTrackerRef={getClusterTrackerRef}
+                />
+              </Suspense>
+            </ModelErrorBoundary>
+          </Canvas>
+          {/* 把每个可见 cluster 在 3D 上画成一个小圆点；hover 时弹出详情卡。
+           * 圆点位置由 MeshPlcLabelBannerTracker 通过同一个 trackerRef 写入。
+           */}
+          {visibleClusters.map((cluster) => {
+            const rows = cluster.members.map((member) => {
+              const meta = metaBySymbol.get(member.plcSymbol);
+              const live = anchorLive.bySymbol[member.plcSymbol];
+              return {
+                cnName: member.cnName ?? meta?.cnName ?? member.partId,
+                value: live?.value ?? null,
+                dataType: meta?.dataType
+              };
             });
-          }
-          if (rows.length === 0) return null;
-          return (
-            <MeshPlcLabelBannerOverlay
-              key={cluster.positionKey}
-              trackerRef={getClusterTrackerRef(cluster.positionKey)}
-              rows={rows}
-            />
-          );
-        })}
+            return (
+              <ClusterDotOverlay
+                key={cluster.positionKey}
+                trackerRef={getClusterTrackerRef(cluster.positionKey)}
+                rows={rows}
+                externallyHovered={hoveredClusterKey === cluster.positionKey}
+                onHoverChange={(hovering) =>
+                  setHoveredClusterKey(hovering ? cluster.positionKey : null)
+                }
+              />
+            );
+          })}
+        </div>
+        <ClusterDataPanel
+          allAnchors={allAnchors}
+          visibleAnchorSymbols={anchorVisibility}
+          anchorLive={anchorLive}
+          metaBySymbol={metaBySymbol}
+          hoveredClusterKey={hoveredClusterKey}
+          onHoverCluster={setHoveredClusterKey}
+        />
       </div>
     </section>
   );

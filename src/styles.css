@@ -495,6 +495,42 @@ button {
   background: #10171a;
 }
 
+/* 3:1 split：左侧 3fr 画布，右侧 1fr 数据面板。仅当外层加上
+   .machine-canvas-grid 时生效。 */
+.machine-canvas-grid {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 12px;
+  padding: 12px;
+  /* 画布内不允许文字选中 / 拖拽，否则 OrbitControls 会和默认文字拖拽
+     互相干扰（拖动「锚点」按钮文字会新建一个标签页）。 */
+  -webkit-user-select: none;
+  user-select: none;
+}
+.machine-canvas-grid * {
+  -webkit-user-drag: none;
+}
+
+.machine-canvas-main {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #10171a;
+  /* 拖动视角旋转时阻止浏览器默认文字拖拽行为（否则会新建一个
+     "锚点"文本的标签页）。同时禁用文本选中，避免和 OrbitControls 冲突。 */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 网格模式下画布应填满 .machine-canvas-main，而不是外层 .machine-canvas */
+.machine-canvas-grid > .machine-canvas-main > canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .machine-canvas canvas {
   display: block;
   width: 100% !important;
@@ -505,6 +541,13 @@ button {
   flex: 1 1 auto;
   min-height: 0;
   height: auto;
+}
+
+/* 图层 / 锚点 按钮从右上角挪到左上角 */
+.model-layer-control-left {
+  right: auto;
+  left: 12px;
+  justify-items: start;
 }
 
 .model-layer-control {
@@ -1807,4 +1850,224 @@ pre {
 }
 .mesh-plc-label.tone-number::after {
   border-top-color: #4ec9b0;
+}
+
+/* ---------- 3D 上的小圆点（每个 cluster 一个） ---------- */
+.cluster-dot-anchor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+.cluster-dot {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #72d6c9;
+  border: 1.5px solid #0c2326;
+  box-shadow: 0 0 6px rgba(114, 214, 201, 0.6);
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.cluster-dot:hover,
+.cluster-dot-anchor.is-hovered .cluster-dot {
+  transform: scale(1.45);
+  background: #a9f2c8;
+  box-shadow: 0 0 12px rgba(169, 242, 200, 0.85);
+}
+
+/* 圆点 hover 时的详情卡（弹出位置由 transform 实时更新） */
+.cluster-popover-anchor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.cluster-popover {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 120px;
+  max-width: 220px;
+  padding: 6px 10px 7px;
+  color: #f7fbfb;
+  background: rgba(18, 43, 50, 0.94);
+  border: 1px solid rgba(114, 214, 201, 0.45);
+  border-radius: 6px;
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(18, 43, 50, 0.4);
+  pointer-events: auto;
+}
+
+.cluster-popover-hint {
+  color: rgba(231, 243, 244, 0.7);
+  font-weight: 500;
+  text-align: center;
+}
+
+.cluster-popover-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.cluster-popover-row + .cluster-popover-row {
+  margin-top: 2px;
+}
+
+.cluster-popover-row-name {
+  color: rgba(231, 243, 244, 0.85);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.cluster-popover-row-value {
+  font-family: "JetBrains Mono", "Consolas", "Courier New", monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cluster-popover-row-value.tone-ok    { color: #a9f2c8; }
+.cluster-popover-row-value.tone-err   { color: #ff9c8e; }
+.cluster-popover-row-value.tone-muted { color: rgba(231, 243, 244, 0.55); }
+.cluster-popover-row-value.tone-number { color: #72d6c9; }
+
+/* ---------- 右侧数据面板 ---------- */
+.machine-data-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 10px;
+  background: rgba(18, 36, 42, 0.72);
+  border: 1px solid rgba(114, 214, 201, 0.18);
+  border-radius: 8px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: #e9fbf8;
+  backdrop-filter: blur(8px);
+  min-height: 0;
+  /* 同上：阻止文字拖拽新建标签。 */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.data-panel-section {
+  display: grid;
+  gap: 4px;
+}
+
+.data-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  cursor: pointer;
+  color: #b6dad6;
+  font: inherit;
+  text-align: left;
+}
+
+.data-panel-header:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #e9fbf8;
+}
+
+.data-panel-header-label {
+  font-weight: 600;
+}
+
+.data-panel-header-count {
+  font-size: 10px;
+  font-style: normal;
+  opacity: 0.65;
+}
+
+.data-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 4px;
+  display: grid;
+  gap: 3px;
+}
+
+.data-panel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: "JetBrains Mono", "Consolas", "Courier New", monospace;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.data-panel-row:hover,
+.data-panel-row.is-hovered {
+  background: rgba(114, 214, 201, 0.16);
+  border-color: rgba(114, 214, 201, 0.45);
+}
+
+.data-panel-row.is-off {
+  opacity: 0.55;
+}
+
+.data-panel-row.is-off .data-panel-row-value-text {
+  color: rgba(231, 243, 244, 0.45);
+}
+
+.data-panel-row-value-name {
+  color: rgba(236, 246, 246, 0.78);
+  font-weight: 400;
+}
+
+.data-panel-row-value-text {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.data-panel-row-value.tone-ok    { color: #a9f2c8; }
+.data-panel-row-value.tone-err   { color: #ff9c8e; }
+.data-panel-row-value.tone-muted { color: rgba(231, 243, 244, 0.55); }
+.data-panel-row-value.tone-number { color: #72d6c9; }
+
+/* ---------- 窄屏：3:1 分栏退化为上下堆叠 ---------- */
+@media (max-width: 1100px) {
+  .machine-canvas-grid {
+    grid-template-columns: 1fr;
+  }
+  .machine-data-panel {
+    max-height: 320px;
+  }
 }
