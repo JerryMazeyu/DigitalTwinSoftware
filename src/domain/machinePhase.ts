@@ -13,6 +13,12 @@
  * PLC 返回值可能是 number / boolean / string / undefined（首次轮询前），
  * 解析函数一律兜底为 0 / false，保证判定在任何数据形态下都健壮。
  * 订阅用的符号集固定不随 UI 状态（锚点开关 / 腔室选择）变化——见 TwinMachine3D。
+ *
+ * === 临时调试覆盖（端到端验证用） ===
+ * 想临时把判定固定成某一个相位、观察「15s 空闲 → 相机复位 + 视频轮播」
+ * 的端到端行为？详见文件下方 `MACHINE_PHASE_OVERRIDE`：在项目根
+ * `.env.local` 写入 `VITE_MACHINE_PHASE=pump` 等 4 个合法值之一即可。
+ * Vite 自动加载、`.gitignore` 默认忽略，验证完删掉那一行恢复真实数据。
  */
 export type MachinePhase = "idle" | "pump" | "pump+winding" | "pump+winding+coating";
 
@@ -121,7 +127,41 @@ export function valuesFromSymbolMaps(
  * 断言运行相位。任一层判定符号缺失时该层视为不激活（呈乐观闲置），
  * 因此 PLC 断连 / 首次轮询未返回时只会误判为 idle，不会误播「运行中」。
  */
+/**
+ * 端到端调试覆盖：读 Vite 环境变量 VITE_MACHINE_PHASE，把判定固定成某一
+ * 个相位，用于临时验证「15s 空闲 → 相机复位 + 视频轮播」的端到端行为。
+ * 留空 / 未设 / 不在合法值集合 → 走真实 PLC 数据。
+ *
+ * 用法（在项目根创建或修改 `.env.local`，Vite 会自动加载、`.gitignore` 已默认忽略）：
+ *   VITE_MACHINE_PHASE=pump                     # 强制判定为「抽真空」
+ *   VITE_MACHINE_PHASE=pump+winding             # 强制判定为「抽真空+卷绕」
+ *   VITE_MACHINE_PHASE=pump+winding+coating     # 强制判定为「抽真空+卷绕+镀膜」
+ *   VITE_MACHINE_PHASE=idle                     # 强制判定为「闲置」
+ * 验证完删掉这一行即可恢复真实数据驱动。
+ */
+const VALID_PHASE_OVERRIDES: ReadonlySet<MachinePhase> = new Set([
+  "idle",
+  "pump",
+  "pump+winding",
+  "pump+winding+coating"
+]);
+
+function readMachinePhaseOverride(): MachinePhase | null {
+  try {
+    const env = (import.meta as unknown as { env?: Record<string, unknown> }).env;
+    const raw = env?.VITE_MACHINE_PHASE;
+    if (typeof raw !== "string") return null;
+    return VALID_PHASE_OVERRIDES.has(raw as MachinePhase) ? (raw as MachinePhase) : null;
+  } catch {
+    return null;
+  }
+}
+
+export const MACHINE_PHASE_OVERRIDE: MachinePhase | null = readMachinePhaseOverride();
+
 export function classifyMachinePhase(values: Record<string, unknown>): MachinePhase {
+  // 调试覆盖：设置环境变量后直接返回目标相位，绕过 PLC 真实值。
+  if (MACHINE_PHASE_OVERRIDE) return MACHINE_PHASE_OVERRIDE;
   const vacuumActive =
     PHASE_HIVAC_SYMBOLS.some((s) => toBool(values[s])) ||
     PHASE_AUTOPUMP_SYMBOLS.some((s) => toNumber(values[s]) !== 0);

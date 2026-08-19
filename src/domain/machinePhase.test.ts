@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MACHINE_PHASE_OVERRIDE,
   PHASE_ALL_SYMBOLS,
   PHASE_AUTOPUMP_SYMBOLS,
   PHASE_COATING_SYMBOLS,
@@ -147,5 +148,12 @@ describe("符号集 & 视频映射", () => {
   it("idle 不在视频映射中（闲置不播视频）", () => {
     const keys = Object.keys(PHASE_VIDEO);
     expect(keys).not.toContain("idle");
+  });
+});
+
+describe("调试覆盖 MACHINE_PHASE_OVERRIDE", () => {
+  it("默认（无 .env.local 设置）时为 null，走真实数据驱动", () => {
+    expect(MACHINE_PHASE_OVERRIDE).toBeNull();
+    expect(classifyMachinePhase({})).toBe("idle");
   });
 });
