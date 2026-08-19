@@ -6,7 +6,13 @@ import { OrbitControls as ThreeOrbitControls } from "three/examples/jsm/controls
 
 import { CoaterObjModel } from "./CoaterObjModel";
 import { ChamberMask } from "./ChamberMask";
+import { MachinePhaseVideo } from "./MachinePhaseVideo";
 import { coaterModelLayers, createAllLayerSelection, toggleLayerSelection, type CoaterModelLayerId } from "../domain/modelLayers";
+import {
+  classifyMachinePhase,
+  PHASE_ALL_SYMBOLS,
+  valuesFromSymbolMaps
+} from "../domain/machinePhase";
 import type { MachineStatus, RiskLevel, SystemHealth } from "../domain/models";
 import {
   MeshPlcLabelBannerTracker,
@@ -15,6 +21,7 @@ import {
 import { ClusterDotOverlay } from "./sensorBoard/ClusterDotOverlay";
 import { ClusterDataPanel } from "./sensorBoard/ClusterDataPanel";
 import { usePlcSensors } from "../hooks/usePlcSensors";
+import { useIdleTimer } from "../hooks/useIdleTimer";
 import { PLC_ANCHOR_CONFIG } from "../data/plcAnchorConfig";
 import { clusterAnchorsByPosition, type AnchorCluster } from "../data/plcAnchorClusters";
 import { PLC_SENSOR_META } from "../data/plcSensorMap";
@@ -49,6 +56,14 @@ const DEFAULT_CAMERA_TARGET = new THREE.Vector3(0, 1.52, 0);
 // 12 → 20：模型宽度约 8.8 单位，全屏下视野横向约 17.6，模型占视口 ~50%。
 const FULLSCREEN_CAMERA_POSITION: [number, number, number] = [0, 1.52, 20];
 
+// 空闲复位动画：两个目标位置缓存成 Vector3（避免每帧 new），用帧率无关
+// 的指数阻尼收敛。RESET_DAMPING 越大回正越快；RESET_EPSILON 是收敛阈值，
+// 收敛即自停以省 CPU。
+const RESET_DAMPING = 6;
+const RESET_EPSILON = 0.02;
+const DEFAULT_CAMERA_POSITION_V = new THREE.Vector3(...DEFAULT_CAMERA_POSITION);
+const FULLSCREEN_CAMERA_POSITION_V = new THREE.Vector3(...FULLSCREEN_CAMERA_POSITION);
+
 type TwinMachine3DProps = {
   machine: MachineStatus;
   riskLevel: RiskLevel;
@@ -79,9 +94,22 @@ class ModelErrorBoundary extends Component<PropsWithChildren<{ fallback: ReactNo
   }
 }
 
-function FreeCameraControls({ isFullscreen }: { isFullscreen: boolean }) {
+function FreeCameraControls({
+  isFullscreen,
+  idle
+}: {
+  isFullscreen: boolean;
+  idle: boolean;
+}) {
   const { camera, gl } = useThree();
   const controls = useRef<ThreeOrbitControls>(null);
+  // 复位动画运行中标记：idle 上升沿触发、收敛后自停；用户操作让 idle
+  // 翻回 false 时立即停，避免强行覆盖用户正在操作的视角。
+  const resettingRef = useRef(false);
+
+  useEffect(() => {
+    resettingRef.current = idle;
+  }, [idle]);
 
   useEffect(() => {
     // 全屏下相机往后拉，让模型在更大的视口里看起来更小（更多留白）。
@@ -110,8 +138,32 @@ function FreeCameraControls({ isFullscreen }: { isFullscreen: boolean }) {
     controls.current?.update();
   }, [camera, isFullscreen]);
 
-  useFrame(() => {
-    controls.current?.update();
+  useFrame((_, rawDelta) => {
+    const ctrl = controls.current;
+    if (!ctrl) return;
+    if (!resettingRef.current) {
+      ctrl.update();
+      return;
+    }
+    // 必须同时 lerp position 与 target：OrbitControls.update() 会用
+    // position - target 偏移重算相机姿态，只改 position 会被覆盖。
+    const lambda = 1 - Math.exp(-RESET_DAMPING * Math.min(rawDelta, 0.1));
+    const targetPosition = isFullscreen
+      ? FULLSCREEN_CAMERA_POSITION_V
+      : DEFAULT_CAMERA_POSITION_V;
+    camera.position.lerp(targetPosition, lambda);
+    ctrl.target.lerp(DEFAULT_CAMERA_TARGET, lambda);
+    ctrl.update();
+    // 收敛：double 精度到位、snap 到目标，自停以省 CPU。
+    if (
+      camera.position.distanceTo(targetPosition) < RESET_EPSILON &&
+      ctrl.target.distanceTo(DEFAULT_CAMERA_TARGET) < RESET_EPSILON
+    ) {
+      camera.position.copy(targetPosition);
+      ctrl.target.copy(DEFAULT_CAMERA_TARGET);
+      ctrl.update();
+      resettingRef.current = false;
+    }
   });
 
   return (
@@ -605,6 +657,22 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, latestJob, 
     intervalMs: 2000
   });
 
+  // 机器运行相位用独立的固定订阅集——wantedSymbols 不随锚点开关 / 腔室选
+  // 择收缩，否则卷绕 / 镀膜位被隐藏时会被误判为「不在运行」。
+  const phaseLive = usePlcSensors({
+    wantedSymbols: PHASE_ALL_SYMBOLS,
+    intervalMs: 2000
+  });
+
+  // 15 秒空闲无操作：触发相机复位 + 机器状态视频轮播；任一鼠标点击 /
+  // 键盘 / 滚轮事件都会立即打断并从头重新计时。
+  const idle = useIdleTimer(15000);
+
+  const phase = useMemo(
+    () => classifyMachinePhase(valuesFromSymbolMaps(phaseLive.bySymbol)),
+    [phaseLive.bySymbol]
+  );
+
   return (
     <section className={compact ? "panel machine-panel machine-panel-fill" : "panel machine-panel"} aria-label="镀膜机三维数字孪生">
       <div className="panel-header">
@@ -744,8 +812,9 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, latestJob, 
               </div>
             )}
           </div>
+          <MachinePhaseVideo phase={phase} visible={idle} />
           <Canvas camera={{ position: DEFAULT_CAMERA_POSITION, fov: 30 }} shadows>
-            <FreeCameraControls isFullscreen={isFullscreen} />
+            <FreeCameraControls isFullscreen={isFullscreen} idle={idle} />
             <ModelErrorBoundary fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
               <Suspense fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
                 <RealModelScene
