@@ -14,10 +14,17 @@ import type { ChamberId } from "../data/chambers";
  *
  * 填充用 `meshBasicMaterial`（不受光、纯色高亮），`depthWrite={false}` 让
  * 半透明片不写深度、不误挡后方几何；描边用 `depthTest={false}` 保证轮廓
- * 即使局部被模型遮挡也清晰可见。
+ * 即使局部被模型遮挡也清晰可见。边缘柔化：沿轮廓叠加多层向外扩展、透
+ * 明度递减的同色光晕环（辉光效果），视觉上让硬边泛开、更柔和。
  */
 type ChamberMaskProps = {
   chamberId: ChamberId | null;
+};
+
+/** 单个光晕环：外扩后的闭合轮廓点 + 透明度。 */
+type GlowRing = {
+  pts: Float32Array;
+  opacity: number;
 };
 
 /** 把配置里的四个角构建成 three.js 形状路径（XY 平面，y 向上）。 */
@@ -56,11 +63,73 @@ function buildContour(shape: THREE.Shape): Float32Array {
   return arr;
 }
 
+/**
+ * 生成同色光晕环：取形状轮廓点，按「顶点角法线（相邻边均值方向）朝外」
+ * 逐点外扩 d，得到一圈形状相同、尺寸略大的同色细线。多圈从密到疏、透
+ * 明度递减叠加，在蒙版边缘外形成渐进淡出的辉光，弱化硬边。d/opacity
+ * 为种子值，直接改这里即可微调光晕浓淡，不需要碰渲染代码。
+ */
+function buildGlowRings(shape: THREE.Shape): GlowRing[] {
+  const pts = shape.getPoints(64);
+  if (pts.length === 0) return [];
+  if (pts[0].distanceToSquared(pts[pts.length - 1]) < 1e-9) pts.pop();
+
+  // 质心：凸形状下「顶点 - 质心」可当作外法线的大致方向。
+  let cx = 0;
+  let cy = 0;
+  for (const p of pts) {
+    cx += p.x;
+    cy += p.y;
+  }
+  cx /= pts.length;
+  cy /= pts.length;
+
+  // 逐点外扩方向：相邻两点连线的垂直方向（角平分线法线），并保证朝外。
+  const n = pts.length;
+  const dirs: { x: number; y: number }[] = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const prev = pts[(i - 1 + n) % n];
+    const curr = pts[i];
+    const next = pts[(i + 1) % n];
+    let nx = -(next.y - prev.y);
+    let ny = next.x - prev.x;
+    const len = Math.hypot(nx, ny) || 1;
+    nx /= len;
+    ny /= len;
+    // 凸形状：外法线应与「质心朝外」同向，否则取反。
+    if (nx * (curr.x - cx) + ny * (curr.y - cy) < 0) {
+      nx = -nx;
+      ny = -ny;
+    }
+    dirs[i] = { x: nx, y: ny };
+  }
+
+  const rings: { d: number; opacity: number }[] = [
+    { d: 0.04, opacity: 0.32 },
+    { d: 0.085, opacity: 0.2 },
+    { d: 0.13, opacity: 0.1 }
+  ];
+
+  return rings.map(({ d, opacity }) => {
+    const arr = new Float32Array((n + 1) * 3);
+    for (let i = 0; i < n; i++) {
+      arr[i * 3] = pts[i].x + dirs[i].x * d;
+      arr[i * 3 + 1] = pts[i].y + dirs[i].y * d;
+      arr[i * 3 + 2] = 0;
+    }
+    arr[n * 3] = arr[0];
+    arr[n * 3 + 1] = arr[1];
+    arr[n * 3 + 2] = 0;
+    return { pts: arr, opacity };
+  });
+}
+
 export function ChamberMask({ chamberId }: ChamberMaskProps) {
   const def = chamberId ? CHAMBER_MASK_CONFIG[chamberId] : null;
 
   const shape = useMemo(() => (def ? buildShape(def) : null), [def]);
   const contour = useMemo(() => (shape ? buildContour(shape) : null), [shape]);
+  const glowRings = useMemo(() => (shape ? buildGlowRings(shape) : []), [shape]);
 
   if (!def || !shape || !contour) return null;
 
@@ -89,6 +158,20 @@ export function ChamberMask({ chamberId }: ChamberMaskProps) {
           depthTest={false}
         />
       </line>
+      {/* 边缘光晕：从密到疏的同色细环，透明度递减，形成辉光柔化硬边 */}
+      {glowRings.map((ring, i) => (
+        <line key={i}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[ring.pts, 3]} />
+          </bufferGeometry>
+          <lineBasicMaterial
+            color={def.color}
+            transparent
+            opacity={ring.opacity}
+            depthTest={false}
+          />
+        </line>
+      ))}
     </group>
   );
 }
