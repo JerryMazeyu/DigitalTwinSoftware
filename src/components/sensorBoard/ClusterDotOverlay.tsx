@@ -64,8 +64,10 @@ export function ClusterDotOverlay({
         className={`cluster-dot-anchor${isHovered ? " is-hovered" : ""}`}
         style={{ display: "none" }}
       >
+        {/* 透明命中区：比可见圆点更大的热区，鼠标「靠近」即触发显示
+         * 绿点与读数；事件不绑定在 .cluster-dot 上，因为圆点默认隐藏。 */}
         <span
-          className={`cluster-dot${highlighted ? " is-chamber-highlighted" : ""}`}
+          className="cluster-dot-hitarea"
           onMouseEnter={() => {
             setHovered(true);
             onHoverChange?.(true);
@@ -74,6 +76,9 @@ export function ClusterDotOverlay({
             setHovered(false);
             onHoverChange?.(false);
           }}
+        />
+        <span
+          className={`cluster-dot${highlighted ? " is-chamber-highlighted" : ""}`}
         />
       </div>
       <div

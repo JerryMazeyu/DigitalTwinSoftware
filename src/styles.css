@@ -2168,6 +2168,22 @@ pre {
   -webkit-user-drag: none;
 }
 
+/* 透明命中圈：28px 圆形热区，接收鼠标事件。绿点默认隐藏，鼠标靠近热区
+   （.cluster-dot-anchor.is-hovered）时圆点与读数才浮现。 */
+.cluster-dot-hitarea {
+  position: absolute;
+  top: -14px;
+  left: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
 .cluster-dot {
   position: absolute;
   top: -5px;
@@ -2178,16 +2194,22 @@ pre {
   background: #72d6c9;
   border: 1.5px solid #0c2326;
   box-shadow: 0 0 6px rgba(114, 214, 201, 0.6);
-  cursor: pointer;
-  pointer-events: auto;
+  pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-user-drag: none;
-  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  /* 默认隐藏（保留 transition 让浮现/收起的动画平滑） */
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease;
 }
 
-.cluster-dot:hover,
 .cluster-dot-anchor.is-hovered .cluster-dot {
+  opacity: 1;
   transform: scale(1.45);
   background: #a9f2c8;
   box-shadow: 0 0 12px rgba(169, 242, 200, 0.85);
