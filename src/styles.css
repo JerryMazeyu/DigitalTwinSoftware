@@ -2457,29 +2457,37 @@ pre {
   }
 }
 
-/* ---------- 空闲期状态视频面板：浮在 3D 画布上方、全屏时也可见 ----------
- * 绝对定位在 .machine-canvas-main 内顶部居中，pointer-events:none 让画面
- * 仍可被 OrbitControls 旋转 / 缩放。z-index:2 低于图层/锚点按钮（3），
- * 保证按钮不被遮挡。闲置（idle）时组件不挂载、视频自动卸载。 */
+/* ---------- 空闲期状态视频面板：覆盖 3D 镀膜机显示区域、全屏时也可见 ----------
+ * 铺满 .machine-canvas-main（inset:8px 留点边距），把 3D 模型盖在身后。
+ * pointer-events:none 让 OrbitControls 仍可旋转/缩放（背后），图层/锚点
+ * 按钮仍可点击。闲置（idle）时组件不挂载、视频自动卸载。
+ *
+ * 防变形策略：
+ *   1. 容器默认 aspect-ratio: 16/9；JS 在 onLoadedMetadata 读到视频原生
+ *      videoWidth/videoHeight 时，把它写到容器 style.aspectRatio，让容
+ *      器比例 = 视频原生比，视频自然撑满容器。
+ *   2. <video> 用 object-fit: contain 做兜底——即使容器比例与视频略不
+ *      一致，视频按比例适配留黑边，绝不拉伸裁剪。 */
 .machine-phase-video {
   position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 默认 16/9；onLoadedMetadata 后由 JS 覆写为视频原生比 */
+  aspect-ratio: 16 / 9;
+  background: rgba(8, 14, 22, 0.85);
+  border: 1px solid rgba(149, 200, 215, 0.35);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
   z-index: 2;
   pointer-events: none;
-  width: min(320px, 40%);
-  aspect-ratio: 16 / 9;
-  border-radius: 8px;
-  overflow: hidden;
-  background: rgba(8, 14, 22, 0.55);
-  border: 1px solid rgba(149, 200, 215, 0.35);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(4px);
 }
 .machine-phase-video video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
