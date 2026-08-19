@@ -2,6 +2,9 @@ import {
   Activity,
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   FileJson,
   FolderSearch,
@@ -190,59 +193,72 @@ const JobCard = ({ job, active, onSelect }: { job: CoatingJob; active: boolean; 
 
 const SummaryPanel = ({ job }: { job: CoatingJob }) => {
   const cropResults = getCropResults(job);
+  const [open, setOpen] = useState(false);
 
   return (
-    <section className="panel summary-panel">
-      <div className="panel-header">
+    <section className={`panel summary-panel collapsible-panel ${open ? "is-open" : "is-collapsed"}`}>
+      <button
+        type="button"
+        className="panel-header collapsible-panel-toggle"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+      >
         <div>
           <h2>结果摘要</h2>
           <p>{inspectionTypeLabel[job.type]} / {job.id}</p>
         </div>
-        {job.summary.level ? (
-          <span className={resultChipClass(job.summary.level)}>{job.summary.level}</span>
-        ) : (
-          <span className={`status-dot ${job.status}`}>{statusLabel[job.status]}</span>
-        )}
-      </div>
+        <span className="collapsible-panel-actions">
+          {job.summary.level ? (
+            <span className={resultChipClass(job.summary.level)}>{job.summary.level}</span>
+          ) : (
+            <span className={`status-dot ${job.status}`}>{statusLabel[job.status]}</span>
+          )}
+          <ChevronDown size={14} className="collapsible-panel-chevron" />
+        </span>
+      </button>
 
-      <div className="metric-grid">
-        <div>
-          <span>{job.type === "anomaly" ? "异常得分" : "输入序列"}</span>
-          <strong>{job.type === "anomaly" ? formatScore(job.summary.score) : `${job.summary.sourceImageCount ?? job.inputImages.length} 张`}</strong>
-        </div>
-        <div>
-          <span>模拟电压</span>
-          <strong>{formatVoltage(job.summary.analogVoltage)}</strong>
-        </div>
-        <div>
-          <span>结果时间</span>
-          <strong>{formatTime(job.summary.timestamp)}</strong>
-        </div>
-        <div>
-          <span>{job.type === "anomaly" ? "异常裁片" : "预测文件"}</span>
-          <strong>{job.type === "anomaly" ? `${job.summary.abnormalCropCount ?? 0}/${job.summary.cropCount ?? cropResults.length}` : job.outputImages.prediction ? "已生成" : "缺失"}</strong>
-        </div>
-      </div>
+      {open && (
+        <>
+          <div className="metric-grid">
+            <div>
+              <span>{job.type === "anomaly" ? "异常得分" : "输入序列"}</span>
+              <strong>{job.type === "anomaly" ? formatScore(job.summary.score) : `${job.summary.sourceImageCount ?? job.inputImages.length} 张`}</strong>
+            </div>
+            <div>
+              <span>模拟电压</span>
+              <strong>{formatVoltage(job.summary.analogVoltage)}</strong>
+            </div>
+            <div>
+              <span>结果时间</span>
+              <strong>{formatTime(job.summary.timestamp)}</strong>
+            </div>
+            <div>
+              <span>{job.type === "anomaly" ? "异常裁片" : "预测文件"}</span>
+              <strong>{job.type === "anomaly" ? `${job.summary.abnormalCropCount ?? 0}/${job.summary.cropCount ?? cropResults.length}` : job.outputImages.prediction ? "已生成" : "缺失"}</strong>
+            </div>
+          </div>
 
-      {job.type === "anomaly" ? (
-        <div className="detail-list">
-          <div><span>图片类型</span><strong>{job.summary.imageType || "-"}</strong></div>
-          <div><span>源文件</span><strong>{job.summary.sourceImage || "-"}</strong></div>
-          <div><span>原始尺寸</span><strong>{job.summary.originalSize ? `${job.summary.originalSize[0]} x ${job.summary.originalSize[1]}` : "-"}</strong></div>
-          <div><span>裁片数量</span><strong>{(job.summary.cropCount ?? cropResults.length) || "-"}</strong></div>
-        </div>
-      ) : (
-        <div className="detail-list">
-          <div><span>预测等级</span><strong className={resultToneClass(job.summary.level)}>{job.summary.level || "-"}</strong></div>
-          <div><span>输入图片</span><strong>{job.inputImages.map((file) => file.name).join(", ")}</strong></div>
-        </div>
-      )}
+          {job.type === "anomaly" ? (
+            <div className="detail-list">
+              <div><span>图片类型</span><strong>{job.summary.imageType || "-"}</strong></div>
+              <div><span>源文件</span><strong>{job.summary.sourceImage || "-"}</strong></div>
+              <div><span>原始尺寸</span><strong>{job.summary.originalSize ? `${job.summary.originalSize[0]} x ${job.summary.originalSize[1]}` : "-"}</strong></div>
+              <div><span>裁片数量</span><strong>{(job.summary.cropCount ?? cropResults.length) || "-"}</strong></div>
+            </div>
+          ) : (
+            <div className="detail-list">
+              <div><span>预测等级</span><strong className={resultToneClass(job.summary.level)}>{job.summary.level || "-"}</strong></div>
+              <div><span>输入图片</span><strong>{job.inputImages.map((file) => file.name).join(", ")}</strong></div>
+            </div>
+          )}
 
-      {job.missing.length > 0 && (
-        <div className="warning-box">
-          <AlertTriangle size={16} />
-          <span>缺少文件：{job.missing.join(", ")}</span>
-        </div>
+          {job.missing.length > 0 && (
+            <div className="warning-box">
+              <AlertTriangle size={16} />
+              <span>缺少文件：{job.missing.join(", ")}</span>
+            </div>
+          )}
+        </>
       )}
     </section>
   );
@@ -372,55 +388,77 @@ const ImageExplorer = ({ job }: { job: CoatingJob }) => {
 
 const CropTable = ({ job }: { job: CoatingJob }) => {
   const cropResults = getCropResults(job);
+  const [open, setOpen] = useState(false);
   if (job.type !== "anomaly" || cropResults.length === 0) return null;
 
   return (
-    <section className="panel crop-panel">
-      <div className="panel-header compact">
+    <section className={`panel crop-panel collapsible-panel ${open ? "is-open" : "is-collapsed"}`}>
+      <button
+        type="button"
+        className="panel-header compact collapsible-panel-toggle"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+      >
         <div>
           <h2>裁片结果</h2>
           <p>按得分排序显示前 12 个裁片</p>
         </div>
-      </div>
-      <div className="crop-table">
-        {[...cropResults]
-          .sort((a, b) => Number(b?.sample_score ?? 0) - Number(a?.sample_score ?? 0))
-          .slice(0, 12)
-          .map((crop, index) => (
-            <div className="crop-row" key={`${crop?.crop_id ?? index}-${index}`}>
-              <span>#{crop?.crop_id ?? index}</span>
-              <strong>{formatScore(Number(crop?.sample_score ?? 0))}</strong>
-              <em className={resultToneClass(typeof crop?.anomaly_level === "string" ? crop.anomaly_level : undefined)}>
-                {typeof crop?.anomaly_level === "string" ? crop.anomaly_level : "-"}
-              </em>
-            </div>
-          ))}
-      </div>
+        <ChevronDown size={14} className="collapsible-panel-chevron" />
+      </button>
+      {open && (
+        <div className="crop-table">
+          {[...cropResults]
+            .sort((a, b) => Number(b?.sample_score ?? 0) - Number(a?.sample_score ?? 0))
+            .slice(0, 12)
+            .map((crop, index) => (
+              <div className="crop-row" key={`${crop?.crop_id ?? index}-${index}`}>
+                <span>#{crop?.crop_id ?? index}</span>
+                <strong>{formatScore(Number(crop?.sample_score ?? 0))}</strong>
+                <em className={resultToneClass(typeof crop?.anomaly_level === "string" ? crop.anomaly_level : undefined)}>
+                  {typeof crop?.anomaly_level === "string" ? crop.anomaly_level : "-"}
+                </em>
+              </div>
+            ))}
+        </div>
+      )}
     </section>
   );
 };
 
-const JsonPanel = ({ job }: { job: CoatingJob }) => (
-  <section className="panel json-panel">
-    <div className="panel-header compact">
-      <div>
-        <h2>结构化 JSON</h2>
-        <p>request / result 原始字段</p>
-      </div>
-      <FileJson size={19} />
-    </div>
-    <div className="json-columns">
-      <div>
-        <strong>request.json</strong>
-        <pre>{jsonPreview(job.request)}</pre>
-      </div>
-      <div>
-        <strong>{job.resultFile?.name || "result.json"}</strong>
-        <pre>{jsonPreview(job.result)}</pre>
-      </div>
-    </div>
-  </section>
-);
+const JsonPanel = ({ job }: { job: CoatingJob }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className={`panel json-panel collapsible-panel ${open ? "is-open" : "is-collapsed"}`}>
+      <button
+        type="button"
+        className="panel-header compact collapsible-panel-toggle"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+      >
+        <div>
+          <h2>结构化 JSON</h2>
+          <p>request / result 原始字段</p>
+        </div>
+        <span className="collapsible-panel-actions">
+          <FileJson size={19} />
+          <ChevronDown size={14} className="collapsible-panel-chevron" />
+        </span>
+      </button>
+      {open && (
+        <div className="json-columns">
+          <div>
+            <strong>request.json</strong>
+            <pre>{jsonPreview(job.request)}</pre>
+          </div>
+          <div>
+            <strong>{job.resultFile?.name || "result.json"}</strong>
+            <pre>{jsonPreview(job.result)}</pre>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+};
 
 export function App() {
   const { jobs, health, loading, error, connection, lastEventAt } = useCoatingMonitor();
@@ -430,6 +468,8 @@ export function App() {
   const [detailSplitRatio, setDetailSplitRatio] = useState<number>(DESKTOP_SPLIT_BOUNDS.defaultRatio);
   const [splitDragging, setSplitDragging] = useState(false);
   const [activeTab, setActiveTab] = useState<AppTabKey>("machine");
+  // 左侧「异常与趋势」结果列表——整侧边栏可折叠，默认展开。
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const splitShellRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ startY: number; startRatio: number; containerHeight: number } | null>(null);
 
@@ -577,37 +617,52 @@ export function App() {
         </main>
       ) : (
       <main className="monitor-layout">
-        <aside className="job-sidebar">
-          <div className="side-toolbar">
-            <div className="search-box">
-              <Search size={15} />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索时间戳或结果" />
-            </div>
-            <div className="filter-row">
-              {(["all", "anomaly", "trend"] as FilterType[]).map((item) => (
-                <button className={filter === item ? "active" : ""} key={item} type="button" onClick={() => setFilter(item)}>
-                  {item === "all" ? "全部" : inspectionTypeLabel[item]}
-                </button>
-              ))}
-            </div>
-          </div>
+        <aside className={`job-sidebar ${sidebarOpen ? "" : "job-sidebar-collapsed"}`}>
+          <button
+            type="button"
+            className="job-sidebar-toggle"
+            onClick={() => setSidebarOpen((open) => !open)}
+            aria-expanded={sidebarOpen}
+            title={sidebarOpen ? "收起侧边栏" : "展开侧边栏"}
+          >
+            {sidebarOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+            <span className="job-sidebar-toggle-text">异常与趋势</span>
+            <em className="job-sidebar-toggle-count">{filteredJobs.length}</em>
+          </button>
+          {sidebarOpen && (
+            <>
+              <div className="side-toolbar">
+                <div className="search-box">
+                  <Search size={15} />
+                  <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索时间戳或结果" />
+                </div>
+                <div className="filter-row">
+                  {(["all", "anomaly", "trend"] as FilterType[]).map((item) => (
+                    <button className={filter === item ? "active" : ""} key={item} type="button" onClick={() => setFilter(item)}>
+                      {item === "all" ? "全部" : inspectionTypeLabel[item]}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          <div className="job-list">
-            {loading ? (
-              <EmptyState title="正在扫描 P 盘" detail="等待本地监控服务返回任务列表" />
-            ) : filteredJobs.length === 0 ? (
-              <EmptyState title="暂无匹配任务" detail="可以切换筛选条件或等待新的 input/output 配对" />
-            ) : (
-              filteredJobs.map((job) => (
-                <JobCard
-                  active={selectedJob ? jobKey(selectedJob) === jobKey(job) : false}
-                  job={job}
-                  key={jobKey(job)}
-                  onSelect={() => setSelectedKey(jobKey(job))}
-                />
-              ))
-            )}
-          </div>
+              <div className="job-list">
+                {loading ? (
+                  <EmptyState title="正在扫描 P 盘" detail="等待本地监控服务返回任务列表" />
+                ) : filteredJobs.length === 0 ? (
+                  <EmptyState title="暂无匹配任务" detail="可以切换筛选条件或等待新的 input/output 配对" />
+                ) : (
+                  filteredJobs.map((job) => (
+                    <JobCard
+                      active={selectedJob ? jobKey(selectedJob) === jobKey(job) : false}
+                      job={job}
+                      key={jobKey(job)}
+                      onSelect={() => setSelectedKey(jobKey(job))}
+                    />
+                  ))
+                )}
+              </div>
+            </>
+          )}
         </aside>
 
         <section className="detail-workspace">

@@ -196,6 +196,11 @@ button {
   align-items: stretch;
 }
 
+/* 左侧折叠后让右栏扩到原本侧边栏占用的宽度——grid 第一列退到内容宽度。 */
+.monitor-layout:has(.job-sidebar-collapsed) {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
 .job-sidebar,
 .detail-workspace,
 .panel {
@@ -212,6 +217,68 @@ button {
   border: 1px solid #d9e3e5;
   border-radius: 8px;
   box-shadow: 0 10px 28px rgba(36, 65, 72, 0.08);
+}
+
+.job-sidebar-collapsed {
+  width: 44px;
+  padding: 12px 6px;
+  overflow: hidden;
+}
+
+.job-sidebar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  background: rgba(18, 43, 50, 0.04);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #2c5e58;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+
+.job-sidebar-toggle:hover {
+  background: rgba(114, 214, 201, 0.16);
+  border-color: rgba(114, 214, 201, 0.4);
+}
+
+.job-sidebar-collapsed .job-sidebar-toggle {
+  flex-direction: column;
+  margin-bottom: 0;
+  padding: 12px 4px;
+  gap: 8px;
+}
+
+.job-sidebar-toggle-text {
+  flex: 1 1 auto;
+  text-align: left;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.job-sidebar-collapsed .job-sidebar-toggle-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.job-sidebar-toggle-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  padding: 1px 6px;
+  font-size: 10.5px;
+  font-style: normal;
+  background: rgba(114, 214, 201, 0.22);
+  color: #1f4a45;
+  border-radius: 9px;
 }
 
 .side-toolbar {
@@ -815,6 +882,43 @@ button {
 .panel-header p,
 .selected-banner p {
   color: #64757b;
+}
+
+/* 折叠面板：SummaryPanel / CropTable / JsonPanel。点击 header 切换。 */
+.collapsible-panel-toggle {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.collapsible-panel-toggle:hover {
+  background: rgba(114, 214, 201, 0.07);
+}
+
+.collapsible-panel-toggle:focus-visible {
+  outline: 2px solid rgba(114, 214, 201, 0.65);
+  outline-offset: -2px;
+}
+
+.collapsible-panel-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapsible-panel-chevron {
+  color: #64757b;
+  transition: transform 160ms ease-out;
+}
+
+.collapsible-panel.is-collapsed .collapsible-panel-chevron {
+  transform: rotate(-90deg);
 }
 
 .selected-banner p {
