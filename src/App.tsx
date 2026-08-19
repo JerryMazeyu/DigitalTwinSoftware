@@ -470,6 +470,9 @@ export function App() {
   const [activeTab, setActiveTab] = useState<AppTabKey>("machine");
   // 左侧「异常与趋势」结果列表——整侧边栏可折叠，默认展开。
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // 详情面板是否自动跟随最新完成结果（不受过滤影响）。点侧边栏卡片 → false；
+  // 点 selected-banner 上的"跟随最新"按钮 → true。
+  const [autoFollow, setAutoFollow] = useState(true);
   const splitShellRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ startY: number; startRatio: number; containerHeight: number } | null>(null);
 
@@ -483,12 +486,16 @@ export function App() {
   }, [filter, jobs, query]);
 
   const selectedJob = useMemo(() => {
+    // 跟随最新：忽略过滤器与 selectedKey，始终取服务器最新一条（jobs[0]）。
+    if (autoFollow) {
+      return jobs[0] || null;
+    }
     if (selectedKey) {
       const found = jobs.find((job) => jobKey(job) === selectedKey);
       if (found) return found;
     }
     return filteredJobs[0] || jobs[0] || null;
-  }, [filteredJobs, jobs, selectedKey]);
+  }, [filteredJobs, jobs, selectedKey, autoFollow]);
 
   useEffect(() => {
     if (selectedJob) setSelectedKey(jobKey(selectedJob));
@@ -656,7 +663,10 @@ export function App() {
                       active={selectedJob ? jobKey(selectedJob) === jobKey(job) : false}
                       job={job}
                       key={jobKey(job)}
-                      onSelect={() => setSelectedKey(jobKey(job))}
+                      onSelect={() => {
+                        setSelectedKey(jobKey(job));
+                        setAutoFollow(false);
+                      }}
                     />
                   ))
                 )}
@@ -701,6 +711,20 @@ export function App() {
                         </span>
                       </div>
                       <div><RefreshCw size={16} />{formatTime(selectedJob.updatedAt)}</div>
+                      {!autoFollow && (
+                        <button
+                          type="button"
+                          className="banner-follow-latest"
+                          onClick={() => {
+                            setAutoFollow(true);
+                            if (jobs[0]) setSelectedKey(jobKey(jobs[0]));
+                          }}
+                          title="恢复自动跟随最新完成结果"
+                        >
+                          <Radio size={14} />
+                          <span>跟随最新</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
