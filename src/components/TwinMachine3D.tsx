@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { OrbitControls as ThreeOrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import { CoaterObjModel } from "./CoaterObjModel";
+import { ChamberMask } from "./ChamberMask";
 import { coaterModelLayers, createAllLayerSelection, toggleLayerSelection, type CoaterModelLayerId } from "../domain/modelLayers";
 import type { MachineStatus, RiskLevel, SystemHealth } from "../domain/models";
 import {
@@ -40,11 +41,13 @@ declare module "@react-three/fiber" {
   }
 }
 
-const DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 0.72, 12];
-const DEFAULT_CAMERA_TARGET = new THREE.Vector3(0, 0.72, 0);
+// 相机 Y 与模型 MODEL_Y_OFFSET / plcAnchorConfig 锚点 Y 一同上抬了 0.8，
+// 保证模型抬高后构图仍然居中（位置与 target 同步 +0.8）。
+const DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 1.52, 12];
+const DEFAULT_CAMERA_TARGET = new THREE.Vector3(0, 1.52, 0);
 // 全屏下相机往后拉，让模型在更大的视口里看起来更小（更多留白）。
 // 12 → 20：模型宽度约 8.8 单位，全屏下视野横向约 17.6，模型占视口 ~50%。
-const FULLSCREEN_CAMERA_POSITION: [number, number, number] = [0, 0.72, 20];
+const FULLSCREEN_CAMERA_POSITION: [number, number, number] = [0, 1.52, 20];
 
 type TwinMachine3DProps = {
   machine: MachineStatus;
@@ -345,15 +348,15 @@ function ModelStatusLayer({ machine, riskLevel }: { machine: MachineStatus; risk
 
   return (
     <group>
-      <mesh position={[1.82, 0.1, 0.78]}>
+      <mesh position={[1.82, 0.9, 0.78]}>
         <boxGeometry args={[0.06, 0.06, 1.12]} />
         <meshStandardMaterial color={alertColor} emissive={alertColor} emissiveIntensity={0.42} transparent opacity={0.86} />
       </mesh>
-      <mesh position={[3.05, 1.18, -0.48]}>
+      <mesh position={[3.05, 1.98, -0.48]}>
         <sphereGeometry args={[0.095, 24, 24]} />
         <meshStandardMaterial color={alertColor} emissive={alertColor} emissiveIntensity={running ? 0.95 : 0.35} />
       </mesh>
-      <mesh position={[-2.74, -0.34, 0]} receiveShadow>
+      <mesh position={[-2.74, 0.46, 0]} receiveShadow>
         <boxGeometry args={[1.32, 0.032, 1.06]} />
         <meshStandardMaterial color="#c0d3d6" emissive="#16393b" emissiveIntensity={running ? 0.24 : 0.07} metalness={0.12} roughness={0.2} transparent opacity={0.72} />
       </mesh>
@@ -367,7 +370,8 @@ function RealModelScene({
   visibleLayerIds,
   onScene,
   clusters,
-  getClusterTrackerRef
+  getClusterTrackerRef,
+  selectedChamber
 }: {
   machine: MachineStatus;
   riskLevel: RiskLevel;
@@ -375,6 +379,7 @@ function RealModelScene({
   onScene: (root: THREE.Object3D) => void;
   clusters: AnchorCluster[];
   getClusterTrackerRef: (positionKey: string) => React.MutableRefObject<MeshPlcLabelTrackerRef>;
+  selectedChamber: ChamberId | null;
 }) {
   const [sceneRoot, setLocalSceneRoot] = useState<THREE.Object3D | null>(null);
   const handleScene = (root: THREE.Object3D) => {
@@ -395,6 +400,8 @@ function RealModelScene({
           trackerRef={getClusterTrackerRef(cluster.positionKey)}
         />
       ))}
+      {/* 选中腔室时的 2D 透明蒙版（XY 平面，面向默认相机） */}
+      <ChamberMask chamberId={selectedChamber} />
     </>
   );
 }
@@ -748,6 +755,7 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, latestJob, 
                   onScene={setCoaterScene}
                   clusters={visibleClusters}
                   getClusterTrackerRef={getClusterTrackerRef}
+                  selectedChamber={selectedChamber}
                 />
               </Suspense>
             </ModelErrorBoundary>

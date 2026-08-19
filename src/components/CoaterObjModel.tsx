@@ -7,7 +7,9 @@ import type { CoaterModelLayerId } from "../domain/modelLayers";
 
 const MODEL_DIR = "/models/coater-20260721";
 const TARGET_WIDTH = 8.8;
-const MODEL_Y_OFFSET = 1.1;
+// 模型整体抬高量（世界 Y）。与 plcAnchorConfig.ts 锚点 Y、相机、状态层的
+// 平移保持一致——抬模型必须同步平移锚点，否则数据点位会错位。
+const MODEL_Y_OFFSET = 1.9;
 const visibleLayerIdsSet = new Set<CoaterModelLayerId>(["___01", "___02"]);
 
 const prepareObject = (object: THREE.Object3D, visibleLayerIds: CoaterModelLayerId[]) => {
