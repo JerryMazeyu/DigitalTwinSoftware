@@ -682,7 +682,7 @@ export function App() {
             style={{ gridTemplateRows: splitGridTemplateRows(detailSplitRatio) }}
           >
             <section className="detail-pane detail-pane-machine">
-              <TwinMachine3D compact machine={machineStatus} riskLevel={riskLevel} health={systemHealth} />
+              <TwinMachine3D compact machine={machineStatus} riskLevel={riskLevel} health={systemHealth} latestJob={selectedJob ?? undefined} />
             </section>
 
             <button

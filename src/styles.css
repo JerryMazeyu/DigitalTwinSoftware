@@ -600,6 +600,169 @@ button {
   -webkit-user-select: none;
 }
 
+/* 3D 全屏时显示的最新结果底部摘要（grid 第三行，横跨两列）。 */
+.fullscreen-result-overlay {
+  position: relative;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(11, 18, 21, 0.78);
+  border: 1px solid rgba(114, 214, 201, 0.25);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  animation: fullscreen-overlay-in 160ms ease-out;
+}
+
+/* EKG 心率式 hairline：顶部 1px teal→green 渐变线，呼应「实时监控」。 */
+.fullscreen-result-overlay::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  border-radius: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(114, 214, 201, 0.1),
+    rgba(114, 214, 201, 0.55) 40%,
+    rgba(57, 217, 138, 0.7)
+  );
+}
+
+@keyframes fullscreen-overlay-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fullscreen-result-overlay-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.fullscreen-result-overlay-id {
+  overflow: hidden;
+  color: rgba(247, 251, 251, 0.95);
+  font-family: "JetBrains Mono", "Consolas", "Courier New", monospace;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fullscreen-result-overlay-time {
+  color: #72d6c9;
+  font-family: "JetBrains Mono", "Consolas", "Courier New", monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.fullscreen-result-overlay-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(231, 243, 244, 0.62);
+  font-size: 10.5px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.fullscreen-result-overlay-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #39d98a;
+  animation: fullscreen-pulse 2s ease-in-out infinite;
+}
+
+@keyframes fullscreen-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.fullscreen-result-overlay-images {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.fullscreen-result-overlay-figure {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 6px;
+}
+
+.fullscreen-result-overlay-figure-label {
+  color: rgba(231, 243, 244, 0.5);
+  font-size: 10.5px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.fullscreen-result-overlay-imgbox {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  height: 84px;
+  border-radius: 6px;
+  overflow: hidden;
+  /* 暗色版「网格坐标纸」，复用非全屏 `.long-image` 的网格概念。 */
+  background:
+    linear-gradient(90deg, rgba(114, 214, 201, 0.06) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(114, 214, 201, 0.05) 1px, transparent 1px),
+    rgba(11, 18, 21, 0.45);
+  background-size: 24px 24px;
+}
+
+.fullscreen-result-overlay-imgbox img {
+  display: block;
+  /* 强制图片盒尺寸等于容器，object-fit 接管缩放。
+     图片固有尺寸（如 31901×1000）不再参与布局计算，容器永远不会被撑开。 */
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* 膜面长条图：固定高度的横向条带（比普通图低，节省全屏空间）。
+   图片整宽 contain 完整显示，黑色边 + 白色区域 + 中间边缘全部可见。 */
+.fullscreen-result-overlay-imgbox.is-long {
+  height: 72px;
+}
+
+.fullscreen-result-overlay-imgbox.is-long img {
+  width: 100%;
+  height: 100%;
+}
+
+.fullscreen-result-overlay-imgbox-empty {
+  color: rgba(231, 243, 244, 0.4);
+  font-size: 11px;
+}
+
 /* 网格模式下画布应填满 .machine-canvas-main，而不是外层 .machine-canvas */
 .machine-canvas-grid > .machine-canvas-main > canvas {
   display: block;

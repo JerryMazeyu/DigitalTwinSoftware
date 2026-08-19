@@ -19,6 +19,18 @@ import { clusterAnchorsByPosition, type AnchorCluster } from "../data/plcAnchorC
 import { PLC_SENSOR_META } from "../data/plcSensorMap";
 import { CHAMBERS, CHAMBER_PRIMARY_SYMBOL, CHAMBER_SYMBOLS, type ChamberId } from "../data/chambers";
 import { ChamberSelector } from "./sensorBoard/ChamberSelector";
+import { API_BASE } from "../api/coatingApi";
+import {
+  type ApiFile,
+  type CoatingJob,
+  formatTime,
+  getOutputImageEntries,
+  getPrimaryInputImage,
+  inspectionTypeLabel,
+  isLongStripImageSize,
+  resultLevelTone,
+  statusLabel
+} from "../domain/coatingJobs";
 
 extend({ OrbitControls: ThreeOrbitControls });
 
@@ -38,6 +50,8 @@ type TwinMachine3DProps = {
   machine: MachineStatus;
   riskLevel: RiskLevel;
   health: SystemHealth[];
+  /** 全局最新完成结果——仅在 3D 全屏时用于底部摘要叠层。 */
+  latestJob?: CoatingJob;
   compact?: boolean;
 };
 
@@ -385,7 +399,74 @@ function RealModelScene({
   );
 }
 
-export function TwinMachine3D({ machine, riskLevel, health: _health, compact = false }: TwinMachine3DProps) {
+const FULLSCREEN_TYPE_TONE: Record<CoatingJob["type"], string> = {
+  anomaly: "danger",
+  trend: "success"
+};
+
+/** 全屏摘要里的单张图。膜面图（长宽比 ≥ 4）整宽 contain 铺开，
+ *  复用非全屏 `.long-image` 的「网格坐标纸 + 整图 contain」处理；普通图居中缩略图。 */
+function FullscreenResultImage({ label, file }: { label: string; file?: ApiFile }) {
+  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
+  // 与 App 的 ImagePreview 一致：膜面图默认按长条处理，onLoad 后再按真实尺寸细化。
+  const isLongStrip = naturalSize ? isLongStripImageSize(naturalSize.width, naturalSize.height) : true;
+
+  useEffect(() => {
+    setNaturalSize(null);
+  }, [file?.url]);
+
+  return (
+    <figure className="fullscreen-result-overlay-figure">
+      <figcaption className="fullscreen-result-overlay-figure-label">{label}</figcaption>
+      <div className={isLongStrip ? "fullscreen-result-overlay-imgbox is-long" : "fullscreen-result-overlay-imgbox"}>
+        {file ? (
+          <img
+            src={`${API_BASE}${file.url}`}
+            alt={label}
+            onLoad={(event) => {
+              setNaturalSize({
+                width: event.currentTarget.naturalWidth,
+                height: event.currentTarget.naturalHeight
+              });
+            }}
+          />
+        ) : (
+          <span className="fullscreen-result-overlay-imgbox-empty">暂无图片</span>
+        )}
+      </div>
+    </figure>
+  );
+}
+
+/** 仅 3D 全屏时显示的最新结果底部摘要——实时跟随全局最新任务。 */
+function FullscreenResultOverlay({ job }: { job: CoatingJob }) {
+  const inputFile = getPrimaryInputImage(job);
+  const outputEntry = getOutputImageEntries(job)[0];
+  const levelText = job.summary.level || statusLabel[job.status];
+
+  return (
+    <aside className="fullscreen-result-overlay" aria-label="最新检测结果">
+      <div className="fullscreen-result-overlay-meta">
+        <span className={`type-chip ${FULLSCREEN_TYPE_TONE[job.type]}`}>
+          {inspectionTypeLabel[job.type]}
+        </span>
+        <strong className="fullscreen-result-overlay-id">{job.id}</strong>
+        <span className={`result-level ${resultLevelTone(job.summary.level)}`}>{levelText}</span>
+        <time className="fullscreen-result-overlay-time">{formatTime(job.updatedAt)}</time>
+        <span className="fullscreen-result-overlay-live">
+          <i className="fullscreen-result-overlay-pulse" aria-hidden="true" />
+          实时
+        </span>
+      </div>
+      <div className="fullscreen-result-overlay-images">
+        <FullscreenResultImage label="输入" file={inputFile} />
+        <FullscreenResultImage label="输出" file={outputEntry?.file} />
+      </div>
+    </aside>
+  );
+}
+
+export function TwinMachine3D({ machine, riskLevel, health: _health, latestJob, compact = false }: TwinMachine3DProps) {
   // 全屏按钮——把整个 .machine-canvas 容器（含图层/锚点按钮、Canvas、
   // banner overlays）一次性全屏显示。fullscreenchange 事件负责让按钮图
   // 标在「进入/退出」之间切换，跟随浏览器原生状态。
@@ -711,6 +792,9 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, compact = f
           selected={selectedChamber}
           onSelect={setSelectedChamber}
         />
+        {isFullscreen && latestJob && (
+          <FullscreenResultOverlay key={latestJob.id} job={latestJob} />
+        )}
       </div>
     </section>
   );
