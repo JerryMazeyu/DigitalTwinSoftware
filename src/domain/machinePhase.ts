@@ -148,10 +148,22 @@ const VALID_PHASE_OVERRIDES: ReadonlySet<MachinePhase> = new Set([
 
 function readMachinePhaseOverride(): MachinePhase | null {
   try {
-    const env = (import.meta as unknown as { env?: Record<string, unknown> }).env;
+    const env = (import.meta as unknown as { env?: Record<string, unknown> & { DEV?: boolean } }).env;
     const raw = env?.VITE_MACHINE_PHASE;
+    const isDev = env?.DEV === true;
     if (typeof raw !== "string") return null;
-    return VALID_PHASE_OVERRIDES.has(raw as MachinePhase) ? (raw as MachinePhase) : null;
+    if (VALID_PHASE_OVERRIDES.has(raw as MachinePhase)) {
+      // dev 模式启动时打一次：让用户在 console 一眼看到 override 是否生效，
+      // 避免再次踩到拼写错误。prod 构建不打印（避免污染生产 console）。
+      if (isDev) console.info(`[machinePhase] VITE_MACHINE_PHASE override active: ${raw}`);
+      return raw as MachinePhase;
+    }
+    if (isDev) {
+      console.warn(
+        `[machinePhase] VITE_MACHINE_PHASE="${raw}" 是非法值；应为 idle | pump | pump+winding | pump+winding+coating 之一；已忽略并走真实数据。`
+      );
+    }
+    return null;
   } catch {
     return null;
   }
