@@ -13,12 +13,6 @@
  *                向 -Y 方向凸出。只调 corners 即可整体微调形状。
  *
  * 颜色/坐标是种子值，直接改这里即可微调——不需要碰 UI 代码。
- *
- * === 新模型（20260819）Y 重新标定 ===
- * 旧模型 cavities 散落在 Y=[0.2, 2.85]，所以旧蒙版 span 也覆盖这一段。
- * 新模型 cavities（13 个 Extrusion mesh，Y 完全均匀 = 1.37，size 0.87）
- * 应用 MODEL_Y_OFFSET=1.9 后占据世界 Y=[2.84, 3.71]，与旧蒙版不重叠。
- * 新蒙版统一 Y=[2.6, 4.0] 包裹 cavities + 少量上下边距。
  */
 
 import type { ChamberId } from "./chambers";
@@ -49,36 +43,36 @@ export const CHAMBER_MASK_CONFIG: Record<ChamberId, ChamberMaskDef> = {
     kind: "rectangle",
     color: "#5ad8c9",
     z: 1.1,
-    corners: [[-4.4, 4.0], [-3.3, 4.0], [-3.3, 2.6], [-4.4, 2.6]]
+    corners: [[-4.4, 2.85], [-3.3, 2.85], [-3.3, 0.2], [-4.4, 0.2]]
   },
   "heat-degas": {
     kind: "rectangle",
     color: "#ffb23f",
     z: 1.1,
-    corners: [[-3.25, 4.0], [-1.9, 4.0], [-1.9, 2.6], [-3.25, 2.6]]
+    corners: [[-3.25, 2.85], [-1.9, 2.85], [-1.9, 1.85], [-3.25, 1.85]]
   },
   pretreat: {
     kind: "rectangle",
     color: "#8ab4f8",
     z: 1.1,
-    corners: [[-1.9, 4.0], [-0.9, 4.0], [-0.9, 2.6], [-1.9, 2.6]]
+    corners: [[-1.9, 2.85], [-0.9, 2.85], [-0.9, 2.55], [-1.9, 2.55]]
   },
   coating: {
     kind: "stadium",
     color: "#f08a6e",
     z: 1.1,
-    corners: [[-0.85, 4.0], [2.5, 4.0], [2.5, 2.6], [-0.85, 2.6]]
+    corners: [[-0.85, 2.85], [2.5, 2.85], [2.5, 1.75], [-0.85, 1.75]]
   },
   inspect: {
     kind: "rectangle",
     color: "#f5d76e",
     z: 1.1,
-    corners: [[2.5, 4.0], [3.3, 4.0], [3.3, 2.6], [2.5, 2.6]]
+    corners: [[2.5, 2.85], [3.3, 2.85], [3.3, 2.55], [2.5, 2.55]]
   },
   rewind: {
     kind: "rectangle",
     color: "#39d98a",
     z: 1.1,
-    corners: [[3.3, 4.0], [4.4, 4.0], [4.4, 2.6], [3.3, 2.6]]
+    corners: [[3.3, 2.85], [4.4, 2.85], [4.4, 0.2], [3.3, 0.2]]
   }
 };

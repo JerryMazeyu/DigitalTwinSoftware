@@ -48,15 +48,13 @@ declare module "@react-three/fiber" {
   }
 }
 
-// 相机 Y 跟随 plcAnchorConfig 锚点 Y + MODEL_Y_OFFSET 的整体上移，
-// 保证模型抬高后构图仍然居中（位置与 target 同步）。
-// 新模型（20260819）下，模型占据世界 Y ≈ [-0.26, 3.71]，垂直中点 ≈ 1.72；
-// camera target Y = 2.0 略高于中点，把视觉重心偏向腔室一侧（数据点更密）。
-const DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 2.0, 12];
-const DEFAULT_CAMERA_TARGET = new THREE.Vector3(0, 2.0, 0);
+// 相机 Y 与模型 MODEL_Y_OFFSET / plcAnchorConfig 锚点 Y 一同上抬了 0.8，
+// 保证模型抬高后构图仍然居中（位置与 target 同步 +0.8）。
+const DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 1.52, 12];
+const DEFAULT_CAMERA_TARGET = new THREE.Vector3(0, 1.52, 0);
 // 全屏下相机往后拉，让模型在更大的视口里看起来更小（更多留白）。
 // 12 → 20：模型宽度约 8.8 单位，全屏下视野横向约 17.6，模型占视口 ~50%。
-const FULLSCREEN_CAMERA_POSITION: [number, number, number] = [0, 2.0, 20];
+const FULLSCREEN_CAMERA_POSITION: [number, number, number] = [0, 1.52, 20];
 
 // 空闲复位动画：两个目标位置缓存成 Vector3（避免每帧 new），用帧率无关
 // 的指数阻尼收敛。RESET_DAMPING 越大回正越快；RESET_EPSILON 是收敛阈值，
