@@ -171,6 +171,19 @@ function readMachinePhaseOverride(): MachinePhase | null {
 
 export const MACHINE_PHASE_OVERRIDE: MachinePhase | null = readMachinePhaseOverride();
 
+/**
+ * 相位 → 中文标签（界面展示用）。
+ * 复合相位只显示最高层级的中文简称（"抽真空" 蕴含于 pump、pump+winding、
+ * pump+winding+coating；"卷绕" 是 pump+winding 的新增层；"镀膜" 是
+ * pump+winding+coating 的新增层），让徽章文本更清爽。
+ */
+export const PHASE_LABEL: Record<MachinePhase, string> = {
+  "idle": "闲置",
+  "pump": "抽真空",
+  "pump+winding": "卷绕",
+  "pump+winding+coating": "镀膜"
+};
+
 export function classifyMachinePhase(values: Record<string, unknown>): MachinePhase {
   // 调试覆盖：设置环境变量后直接返回目标相位，绕过 PLC 真实值。
   if (MACHINE_PHASE_OVERRIDE) return MACHINE_PHASE_OVERRIDE;

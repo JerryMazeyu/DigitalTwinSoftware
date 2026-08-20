@@ -1,5 +1,5 @@
-// 用 Blender CLI 把 models-source/coater-20260819.blend 导出为
-// public/models/coater-20260819/coater.glb。
+// 用 Blender CLI 把 models-source/coater-20260819-final.blend 导出为
+// public/models/coater-20260820/coater.glb。
 //
 // 调用方式：node scripts/export-coater-glb.mjs
 //
@@ -20,8 +20,8 @@ import { existsSync } from "node:fs";
 const BLENDER = process.env.BLENDER_BIN
   || "C:/Program Files/Blender Foundation/Blender 5.2/blender.exe";
 
-const SRC = resolve("models-source/coater-20260819.blend");
-const OUT_DIR = resolve("public/models/coater-20260819");
+const SRC = resolve("models-source/coater-20260819-final.blend");
+const OUT_DIR = resolve("public/models/coater-20260820");
 const OUT_FILE = resolve(OUT_DIR, "coater.glb");
 
 if (!existsSync(SRC)) {
@@ -46,34 +46,13 @@ for obj in list(bpy.context.scene.objects):
         obj.hide_render = True
         obj.hide_viewport = True
 
-# 清理杂物（真正删除而不是隐藏——glTF exporter 不一定遵守 hide_render）：
-#   - IndustrialFloor: 21×21 地面平面,不是镀膜机本体
-#   - 所有 origin 精确位于 (-6.71, -0.81, -1.23) 的 mesh: 24 个 mesh 共享同一个
-#     摆放点(13× Extrusion__055-067 + 6× 图块_02__实体47-52 +
-#     4× 零部件23__实体2-5__050-053),全部堆叠——肉眼看上去仍然只是一个 mesh,
-#     在 GLB 里纯属冗余。
-#   - Cube: Blender 默认场景残留立方体（来自 .blend 宿主文件）。
-#   - 柱体.001/.002/.003: 导出时由 instancing/node 生成的额外柱体,不是辊轮。
-#   - KEEP_NAMES: 显式保留——Brep__054 主腔体恰好也 origin 在该点,
-#     但 8.80 宽 × 2.75 高,是模型主体,绝不能误删。
-JUNK_POSITION = (-6.71, -0.81, -1.23)
-JUNK_NAMES = {'IndustrialFloor', 'Cube', '柱体.001', '柱体.002', '柱体.003'}
-KEEP_NAMES = {'Brep__054'}
+# 只删除 IndustrialFloor（21×21 地面平面），其余所有 mesh 原样保留。
 to_remove = []
 
 for obj in list(bpy.context.scene.objects):
     if obj.type != 'MESH':
         continue
-    if obj.name in KEEP_NAMES:
-        continue
-    loc = obj.matrix_world.translation
-    is_junk = (
-        obj.name in JUNK_NAMES
-        or (round(loc.x, 2) == JUNK_POSITION[0]
-            and round(loc.y, 2) == JUNK_POSITION[1]
-            and round(loc.z, 2) == JUNK_POSITION[2])
-    )
-    if is_junk:
+    if obj.name == 'IndustrialFloor':
         to_remove.append(obj)
 
 # 必须先取消父子关系再删,否则子节点可能阻止删除

@@ -5,7 +5,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 import type { CoaterModelLayerId } from "../domain/modelLayers";
 
-const MODEL_DIR = "/models/coater-20260819";
+const MODEL_DIR = "/models/coater-20260820";
 const TARGET_WIDTH = 8.8;
 // 模型整体抬高量（世界 Y）。与 plcAnchorConfig.ts 锚点 Y、相机、状态层的
 // 平移保持一致——抬模型必须同步平移锚点，否则数据点位会错位。

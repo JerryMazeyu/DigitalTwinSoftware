@@ -1084,6 +1084,57 @@ button {
   font-size: 17px;
 }
 
+/* 相位徽章：始终显示当前判定出来的相位。
+   走真实 PLC 时是低调灰青色；走 VITE_MACHINE_PHASE override 时切换为
+   高对比度黄色警示样式 + 呼吸动画，提示用户这是模拟数据。 */
+.phase-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 11px;
+  background: rgba(18, 36, 42, 0.65);
+  border: 1px solid rgba(114, 214, 201, 0.28);
+  border-radius: 6px;
+  color: #b6dad6;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.phase-badge-text strong {
+  color: #d7f4ef;
+}
+.phase-badge-text em {
+  font-style: normal;
+  font-weight: 500;
+  color: #8aa9a4;
+  margin-left: 4px;
+}
+
+/* Override 模式：黄底警示 + 呼吸阴影。 */
+.phase-badge.is-override {
+  background: linear-gradient(135deg, #fff3c2 0%, #ffd86b 100%);
+  border: 1.5px solid #d99a00;
+  color: #5a3500;
+  box-shadow: 0 2px 8px rgba(217, 154, 0, 0.35);
+  animation: phase-override-pulse 2.4s ease-in-out infinite;
+}
+.phase-badge.is-override .phase-badge-text strong {
+  color: #7a4500;
+}
+.phase-badge.is-override .phase-badge-text em {
+  color: #8a5400;
+  opacity: 0.9;
+}
+.phase-badge-icon {
+  font-size: 14px;
+  color: #d97706;
+}
+@keyframes phase-override-pulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(217, 154, 0, 0.35); }
+  50%      { box-shadow: 0 2px 14px rgba(217, 154, 0, 0.7); }
+}
+
 .panel-header p,
 .selected-banner p {
   color: #64757b;
@@ -2485,12 +2536,13 @@ pre {
  *      一致，视频按比例适配留黑边，绝不拉伸裁剪。 */
 .machine-phase-video {
   position: absolute;
-  inset: 8px;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  /* 默认 16/9；onLoadedMetadata 后由 JS 覆写为视频原生比 */
-  aspect-ratio: 16 / 9;
+  /* 非全屏下：高度由 .machine-canvas-grid 第 1 行 1fr 决定 = 右侧
+     数据面板高度；视频用 object-fit: contain 保持原生比 + 不裁切，
+     不再写 aspect-ratio 反推高度（避免溢出主格）。 */
   background: rgba(8, 14, 22, 0.85);
   border: 1px solid rgba(149, 200, 215, 0.35);
   border-radius: 12px;
@@ -2499,6 +2551,11 @@ pre {
   backdrop-filter: blur(4px);
   z-index: 2;
   pointer-events: none;
+}
+/* 全屏下：恢复旧的「inset:8px + JS 写入视频原生 aspectRatio → 紧贴边缘」行为 */
+.machine-phase-video.is-fullscreen {
+  inset: 8px;
+  aspect-ratio: 16 / 9;
 }
 .machine-phase-video video {
   width: 100%;

@@ -23,6 +23,7 @@ import { ClusterDataPanel } from "./sensorBoard/ClusterDataPanel";
 import { usePlcSensors } from "../hooks/usePlcSensors";
 import { useIdleTimer } from "../hooks/useIdleTimer";
 import { PLC_ANCHOR_CONFIG } from "../data/plcAnchorConfig";
+import { MACHINE_PHASE_OVERRIDE, PHASE_LABEL } from "../domain/machinePhase";
 import { clusterAnchorsByPosition, type AnchorCluster } from "../data/plcAnchorClusters";
 import { PLC_SENSOR_META } from "../data/plcSensorMap";
 import { CHAMBERS, CHAMBER_PRIMARY_SYMBOL, CHAMBER_SYMBOLS, type ChamberId } from "../data/chambers";
@@ -680,6 +681,36 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, latestJob, 
           <h2>镀膜机 3D 数字孪生</h2>
           <p>放卷 - 张力辊 - 涂布腔 - 烘干 - 线扫检测 - 收卷</p>
         </div>
+        {(() => {
+          const phaseLabel = PHASE_LABEL[phase];
+          const isOverride = MACHINE_PHASE_OVERRIDE !== null;
+          return (
+            <div
+              className={`phase-badge${isOverride ? " is-override" : ""}`}
+              role="status"
+              aria-live="polite"
+              title={
+                isOverride
+                  ? `当前相位被 VITE_MACHINE_PHASE=${MACHINE_PHASE_OVERRIDE} 强制覆盖——这不是真实 PLC 数据`
+                  : "实时相位判定（来自 PLC 实时值）"
+              }
+            >
+              {isOverride && (
+                <span className="phase-badge-icon" aria-hidden="true">⚠</span>
+              )}
+              <span className="phase-badge-text">
+                {isOverride ? (
+                  <>
+                    <strong>调试覆盖</strong>
+                    <em> · 当前相位：「{phaseLabel}」（非真实 PLC 数据）</em>
+                  </>
+                ) : (
+                  <>实时相位：{phaseLabel}</>
+                )}
+              </span>
+            </div>
+          );
+        })()}
         <span className={`risk-chip risk-${riskLevel}`}>
           {machine.status === "control-pending" ? "只读监控" : "设备联动"}
         </span>
@@ -814,7 +845,7 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, latestJob, 
               </div>
             )}
           </div>
-          <MachinePhaseVideo phase={phase} visible={idle} />
+          <MachinePhaseVideo phase={phase} visible={idle} isFullscreen={isFullscreen} />
           <Canvas camera={{ position: DEFAULT_CAMERA_POSITION, fov: 30 }} shadows>
             <FreeCameraControls isFullscreen={isFullscreen} idle={idle} />
             <ModelErrorBoundary fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>
