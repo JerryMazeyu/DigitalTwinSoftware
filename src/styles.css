@@ -1130,6 +1130,15 @@ button {
   font-size: 14px;
   color: #d97706;
 }
+
+/* 全屏下浮在画布右下角（避免与左上角的图层 / 全屏切换按钮冲突）。
+   panel-header 在全屏范围外，所以这里单独给一份绝对定位的镜像。 */
+.phase-badge.is-fullscreen-floating {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 4;
+}
 @keyframes phase-override-pulse {
   0%, 100% { box-shadow: 0 2px 8px rgba(217, 154, 0, 0.35); }
   50%      { box-shadow: 0 2px 14px rgba(217, 154, 0, 0.7); }
