@@ -51,3 +51,4 @@ tools/.meta_symbols.json
 # scripts, verification PNGs/JSONs, etc.) — never commit these; put them in
 # artifacts/codex/ or a similar folder.
 artifacts/
+.claude/

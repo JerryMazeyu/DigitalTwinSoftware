@@ -46,13 +46,46 @@ for obj in list(bpy.context.scene.objects):
         obj.hide_render = True
         obj.hide_viewport = True
 
-# 仅选择可见 mesh（避免把被禁用的对象也塞进 GLB）
-bpy.ops.object.select_all(action='DESELECT')
-for obj in bpy.context.scene.objects:
-    if obj.type == 'MESH':
-        obj.select_set(True)
-        obj.hide_render = False
-        obj.hide_viewport = False
+# 清理杂物（真正删除而不是隐藏——glTF exporter 不一定遵守 hide_render）：
+#   - IndustrialFloor: 21×21 地面平面,不是镀膜机本体
+#   - 所有 origin 精确位于 (-6.71, -0.81, -1.23) 的 mesh: 24 个 mesh 共享同一个
+#     摆放点(13× Extrusion__055-067 + 6× 图块_02__实体47-52 +
+#     4× 零部件23__实体2-5__050-053),全部堆叠——肉眼看上去仍然只是一个 mesh,
+#     在 GLB 里纯属冗余。
+#   - KEEP_NAMES: 显式保留——Brep__054 主腔体恰好也 origin 在该点,
+#     但 8.80 宽 × 2.75 高,是模型主体,绝不能误删。
+JUNK_POSITION = (-6.71, -0.81, -1.23)
+JUNK_NAMES = {'IndustrialFloor'}
+KEEP_NAMES = {'Brep__054'}
+to_remove = []
+
+for obj in list(bpy.context.scene.objects):
+    if obj.type != 'MESH':
+        continue
+    if obj.name in KEEP_NAMES:
+        continue
+    loc = obj.matrix_world.translation
+    is_junk = (
+        obj.name in JUNK_NAMES
+        or (round(loc.x, 2) == JUNK_POSITION[0]
+            and round(loc.y, 2) == JUNK_POSITION[1]
+            and round(loc.z, 2) == JUNK_POSITION[2])
+    )
+    if is_junk:
+        to_remove.append(obj)
+
+# 必须先取消父子关系再删,否则子节点可能阻止删除
+for obj in to_remove:
+    if obj.parent:
+        obj.parent = None
+
+removed_names = [o.name for o in to_remove]
+for obj in to_remove:
+    bpy.data.objects.remove(obj, do_unlink=True)
+
+sys.stdout.write(f'JUNK_REMOVED: {len(removed_names)} meshes\\n')
+for n in sorted(removed_names):
+    sys.stdout.write(f'  - {n}\\n')
 
 if bpy.context.scene.objects:
     bpy.context.view_layer.objects.active = bpy.context.scene.objects[0]
