@@ -823,6 +823,21 @@ button {
   border-color: #72d6c9;
 }
 
+/* 暂未启用的图层切换按钮——置灰，cursor 提示不可点击 */
+.model-layer-control > button:disabled {
+  color: #6a8b89;
+  background: rgba(18, 43, 50, 0.45);
+  border-color: rgba(145, 216, 207, 0.12);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.model-layer-control > button:disabled:hover {
+  /* 覆盖上面的 :hover 风格，避免鼠标悬停时亮起误导用户 */
+  color: #6a8b89;
+  background: rgba(18, 43, 50, 0.45);
+  border-color: rgba(145, 216, 207, 0.12);
+}
+
 .model-layer-popover {
   display: grid;
   gap: 8px;

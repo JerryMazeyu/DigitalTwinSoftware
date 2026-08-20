@@ -709,8 +709,10 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, latestJob, 
             <button
               className={layerPanelOpen ? "active" : ""}
               type="button"
+              disabled
               onClick={() => setLayerPanelOpen((open) => !open)}
-              title="显示或隐藏模型图层"
+              title="图层切换暂未启用 —— 当前镀膜机模型未分层，待后续重新生成图层映射"
+              aria-label="图层切换（暂未启用）"
             >
               <Layers3 size={15} />
               <span>图层</span>
