@@ -52,10 +52,12 @@ for obj in list(bpy.context.scene.objects):
 #     摆放点(13× Extrusion__055-067 + 6× 图块_02__实体47-52 +
 #     4× 零部件23__实体2-5__050-053),全部堆叠——肉眼看上去仍然只是一个 mesh,
 #     在 GLB 里纯属冗余。
+#   - Cube: Blender 默认场景残留立方体（来自 .blend 宿主文件）。
+#   - 柱体.001/.002/.003: 导出时由 instancing/node 生成的额外柱体,不是辊轮。
 #   - KEEP_NAMES: 显式保留——Brep__054 主腔体恰好也 origin 在该点,
 #     但 8.80 宽 × 2.75 高,是模型主体,绝不能误删。
 JUNK_POSITION = (-6.71, -0.81, -1.23)
-JUNK_NAMES = {'IndustrialFloor'}
+JUNK_NAMES = {'IndustrialFloor', 'Cube', '柱体.001', '柱体.002', '柱体.003'}
 KEEP_NAMES = {'Brep__054'}
 to_remove = []
 
