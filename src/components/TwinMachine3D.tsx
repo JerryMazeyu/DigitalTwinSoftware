@@ -435,26 +435,12 @@ function ModelSceneEnvironment() {
   );
 }
 
-function ModelStatusLayer({ machine, riskLevel }: { machine: MachineStatus; riskLevel: RiskLevel }) {
-  const alertColor = riskColor[riskLevel];
-  const running = machine.status === "running" || machine.status === "warning";
-
-  return (
-    <group>
-      <mesh position={[1.82, 0.9, 0.78]}>
-        <boxGeometry args={[0.06, 0.06, 1.12]} />
-        <meshStandardMaterial color={alertColor} emissive={alertColor} emissiveIntensity={0.42} transparent opacity={0.86} />
-      </mesh>
-      <mesh position={[3.05, 1.98, -0.48]}>
-        <sphereGeometry args={[0.095, 24, 24]} />
-        <meshStandardMaterial color={alertColor} emissive={alertColor} emissiveIntensity={running ? 0.95 : 0.35} />
-      </mesh>
-      <mesh position={[-2.74, 0.46, 0]} receiveShadow>
-        <boxGeometry args={[1.32, 0.032, 1.06]} />
-        <meshStandardMaterial color="#c0d3d6" emissive="#16393b" emissiveIntensity={running ? 0.24 : 0.07} metalness={0.12} roughness={0.2} transparent opacity={0.72} />
-      </mesh>
-    </group>
-  );
+function ModelStatusLayer({ machine: _machine, riskLevel: _riskLevel }: { machine: MachineStatus; riskLevel: RiskLevel }) {
+  // 原先三个 R3F 内联 mesh（细长方体 / 球 / 扁平玻璃板）是用旧 fallback 场景
+  // 的硬编码坐标写的，跟当前 GLB 模型的实际位置完全对不上，渲染出来会
+  // 像漂在模型周围的"杂物"（用户已确认）。GLB 本身已经足够清晰，这里
+  // 不再叠额外的状态装饰；只保留空 group 让外部引用继续工作。
+  return <group />;
 }
 
 function RealModelScene({

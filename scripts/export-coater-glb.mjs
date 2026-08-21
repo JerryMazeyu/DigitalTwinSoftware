@@ -1,5 +1,5 @@
-// 用 Blender CLI 把 models-source/coater-20260819-final.blend 导出为
-// public/models/coater-20260820/coater.glb。
+// 用 Blender CLI 把 models-source/coater-20260821.blend 导出为
+// public/models/coater-20260821/coater.glb。
 //
 // 调用方式：node scripts/export-coater-glb.mjs
 //
@@ -20,8 +20,8 @@ import { existsSync } from "node:fs";
 const BLENDER = process.env.BLENDER_BIN
   || "C:/Program Files/Blender Foundation/Blender 5.2/blender.exe";
 
-const SRC = resolve("models-source/coater-20260819-final.blend");
-const OUT_DIR = resolve("public/models/coater-20260820");
+const SRC = resolve("models-source/coater-20260821.blend");
+const OUT_DIR = resolve("public/models/coater-20260821");
 const OUT_FILE = resolve(OUT_DIR, "coater.glb");
 
 if (!existsSync(SRC)) {
