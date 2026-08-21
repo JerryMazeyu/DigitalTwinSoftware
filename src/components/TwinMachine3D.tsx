@@ -705,7 +705,6 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, latestJob, 
       <div className="panel-header">
         <div>
           <h2>镀膜机 3D 数字孪生</h2>
-          <p>放卷 - 张力辊 - 涂布腔 - 烘干 - 线扫检测 - 收卷</p>
         </div>
         <PhaseBadge phase={phase} />
         <span className={`risk-chip risk-${riskLevel}`}>
