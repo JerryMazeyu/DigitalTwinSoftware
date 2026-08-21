@@ -34,14 +34,23 @@ function buildShape(def: ChamberMaskDef): THREE.Shape {
   shape.moveTo(c0[0], c0[1]);
   shape.lineTo(c1[0], c1[1]);
   shape.lineTo(c2[0], c2[1]);
-  shape.lineTo(c3[0], c3[1]);
   if (def.kind === "stadium") {
-    // 半圆：圆心 = 底边(c3→c2)中点，半径 = 底边半长，向 -Y 凸出。
-    // absarc 用逆时针方向（Math.PI → 0），在 y 向上的坐标系里途经 -Y（下方）。
+    // 半圆：用 2 段三次贝塞尔拟合（替代 absarc）。
+    // 原版 absarc(c3 → c2) 让 c2 在 path 里出现两次，加上 closePath 的 c0，
+    // 形成退化三角形 → 三角化时在底边出现"接缝"线。
+    // 贝塞尔方案让 path 顺序为 c0→c1→c2→贝塞尔→c3→closePath c0，所有顶点
+    // 唯一，无重复点；且贝塞尔段在连接处切线连续，外法线自然平滑，
+    // 光晕环不再"硬拐"。
     const cx = (c2[0] + c3[0]) / 2;
     const cy = c2[1];
     const r = Math.abs(c2[0] - c3[0]) / 2;
-    shape.absarc(cx, cy, r, Math.PI, 0, false);
+    const k = 0.5522847498 * r;  // 三次贝塞尔拟合 1/4 圆弧的控制点距离系数
+    // 段1：c2 → (cx, cy-r)（右下 1/4 圆，向 -Y 凸）
+    shape.bezierCurveTo(c2[0], cy - k, cx + k, cy - r, cx, cy - r);
+    // 段2：(cx, cy-r) → c3（左下 1/4 圆）
+    shape.bezierCurveTo(cx - k, cy - r, c3[0], cy - k, c3[0], cy);
+  } else {
+    shape.lineTo(c3[0], c3[1]);
   }
   shape.closePath();
   return shape;
