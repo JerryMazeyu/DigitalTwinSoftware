@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 import { CHAMBER_MASK_CONFIG, type ChamberMaskDef } from "../data/chamberMaskConfig";
@@ -140,6 +141,23 @@ export function ChamberMask({ chamberId }: ChamberMaskProps) {
   const contour = useMemo(() => (shape ? buildContour(shape) : null), [shape]);
   const glowRings = useMemo(() => (shape ? buildGlowRings(shape) : []), [shape]);
 
+  // 呼吸灯：选中腔室后，半透明蒙版的整体明暗随时间正弦脉动。
+  // 一个完整呼吸周期 ≈ 2s（sin 在 t = 0/π/2π 自然 ease-in-out，
+  // 亮峰与暗谷附近节奏减缓，符合"发亮→减缓→发亮"）。
+  const fillRef = useRef<THREE.MeshBasicMaterial>(null);
+  const strokeRef = useRef<THREE.LineBasicMaterial>(null);
+  const ringRefs = useRef<(THREE.LineBasicMaterial | null)[]>([]);
+
+  useFrame(({ clock }) => {
+    const pulse = Math.sin(clock.getElapsedTime() * Math.PI) * 0.5 + 0.5; // 0..1 平滑
+    if (fillRef.current) fillRef.current.opacity = 0.10 + pulse * 0.45;
+    if (strokeRef.current) strokeRef.current.opacity = 0.55 + pulse * 0.45;
+    glowRings.forEach((ring, i) => {
+      const mat = ringRefs.current[i];
+      if (mat) mat.opacity = ring.opacity * (0.45 + pulse * 1.30); // ~0.45x..1.75x 振幅
+    });
+  });
+
   if (!def || !shape || !contour) return null;
 
   return (
@@ -148,6 +166,7 @@ export function ChamberMask({ chamberId }: ChamberMaskProps) {
       <mesh>
         <shapeGeometry args={[shape]} />
         <meshBasicMaterial
+          ref={fillRef}
           color={def.color}
           transparent
           opacity={0.22}
@@ -161,6 +180,7 @@ export function ChamberMask({ chamberId }: ChamberMaskProps) {
           <bufferAttribute attach="attributes-position" args={[contour, 3]} />
         </bufferGeometry>
         <lineBasicMaterial
+          ref={strokeRef}
           color={def.color}
           transparent
           opacity={0.9}
@@ -174,6 +194,7 @@ export function ChamberMask({ chamberId }: ChamberMaskProps) {
             <bufferAttribute attach="attributes-position" args={[ring.pts, 3]} />
           </bufferGeometry>
           <lineBasicMaterial
+            ref={(m) => { ringRefs.current[i] = m; }}
             color={def.color}
             transparent
             opacity={ring.opacity}
