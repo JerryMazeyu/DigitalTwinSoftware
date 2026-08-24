@@ -83,6 +83,34 @@ export const PHASE_VIDEO: Record<Exclude<MachinePhase, "idle">, string> = {
   "pump+winding+coating": "/videos/pumping_winding_coating.mp4"
 };
 
+/**
+ * 视频取景配置：录制角度导致设备在画面中占比偏小，在 contain 基线上
+ * 叠加等比 transform: scale 放大——裁剪而非拉伸，宽高比不变；溢出由
+ * 容器 overflow: hidden 裁掉。zoom=1 完全恢复原始取景。
+ */
+export type PhaseVideoFraming = {
+  /** 等比放大倍率，≥1；1 = 不裁剪（现状）。 */
+  zoom: number;
+  /** 画面归一化焦点（0~1）：transform-origin 缩放不动点，0.5/0.5 = 沿中心放大。
+   *  全屏下精确对应画面坐标；非全屏含 letterbox 的轴有轻微压缩，微调用。 */
+  focusX: number;
+  focusY: number;
+};
+
+/** 默认取景：1.35× 居中放大（保留约 74% 画面，设备线尺寸放大约 35%）。 */
+export const PHASE_VIDEO_FRAMING_DEFAULT: PhaseVideoFraming = {
+  zoom: 1.35,
+  focusX: 0.5,
+  focusY: 0.5
+};
+
+/** 每个运行态视频的取景配置；三个素材同机位，共享默认值，需要时单独覆盖。 */
+export const PHASE_VIDEO_FRAMING: Record<Exclude<MachinePhase, "idle">, PhaseVideoFraming> = {
+  pump: PHASE_VIDEO_FRAMING_DEFAULT,
+  "pump+winding": PHASE_VIDEO_FRAMING_DEFAULT,
+  "pump+winding+coating": PHASE_VIDEO_FRAMING_DEFAULT
+};
+
 /** 把任意 PLC 值归一化为有限数值：number/boolean/string 都能吃，undefined→0。 */
 export function toNumber(v: unknown): number {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;

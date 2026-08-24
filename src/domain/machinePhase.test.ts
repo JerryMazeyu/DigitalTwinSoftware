@@ -7,6 +7,8 @@ import {
   PHASE_COATING_SYMBOLS,
   PHASE_HIVAC_SYMBOLS,
   PHASE_VIDEO,
+  PHASE_VIDEO_FRAMING,
+  PHASE_VIDEO_FRAMING_DEFAULT,
   PHASE_VACUUM_SYMBOLS,
   PHASE_WINDING_SYMBOLS,
   classifyMachinePhase,
@@ -143,6 +145,24 @@ describe("符号集 & 视频映射", () => {
     for (const phase of running) {
       expect(PHASE_VIDEO[phase]).toMatch(/^\/videos\/[a-z_]+\.mp4$/);
     }
+  });
+
+  it("3 个运行态都有取景配置：zoom≥1、focus 在 [0,1]，默认值居中", () => {
+    const running: Exclude<MachinePhase, "idle">[] = [
+      "pump",
+      "pump+winding",
+      "pump+winding+coating"
+    ];
+    for (const phase of running) {
+      const framing = PHASE_VIDEO_FRAMING[phase];
+      expect(framing.zoom).toBeGreaterThanOrEqual(1);
+      expect(framing.focusX).toBeGreaterThanOrEqual(0);
+      expect(framing.focusX).toBeLessThanOrEqual(1);
+      expect(framing.focusY).toBeGreaterThanOrEqual(0);
+      expect(framing.focusY).toBeLessThanOrEqual(1);
+    }
+    // 默认取景：沿画面中心放大（focus 0.5/0.5）。
+    expect(PHASE_VIDEO_FRAMING_DEFAULT).toEqual({ zoom: 1.35, focusX: 0.5, focusY: 0.5 });
   });
 
   it("idle 不在视频映射中（闲置不播视频）", () => {

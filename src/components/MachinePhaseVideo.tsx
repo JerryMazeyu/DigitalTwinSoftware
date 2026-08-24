@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { PHASE_VIDEO, type MachinePhase } from "../domain/machinePhase";
+import { useEffect, useState, type CSSProperties } from "react";
+import { PHASE_VIDEO, PHASE_VIDEO_FRAMING, type MachinePhase } from "../domain/machinePhase";
 
 type MachinePhaseVideoProps = {
   /** 当前机器运行相位（由 PLC 实时值判定）。 */
@@ -33,9 +33,12 @@ const VIDEO_MOUNT_DELAY_FULLSCREEN_MS = 1800;
  * - 容器尺寸：
  *     - 非全屏下 .machine-phase-video 高度 = 右侧数据面板高度（同
  *       .machine-canvas-grid 第 1 行 1fr）。视频由 <video> 内部
- *       object-fit: contain 保持原生比 + 完整不裁切，不写 aspectRatio。
+ *       object-fit: contain 保持原生比，不写 aspectRatio。
  *     - 全屏下走旧行为：JS 在 onLoadedMetadata 时把视频原生 aspectRatio
  *       写入容器（CSS .is-fullscreen 同时给 16/9 兜底），紧贴画布边缘。
+ * - 取景裁剪：录制角度导致设备占比偏小，按 PHASE_VIDEO_FRAMING 配置
+ *   在 contain 基线上等比 scale 放大（裁剪而非拉伸），通过容器 CSS
+ *   变量下发，非全屏 / 全屏行为一致。zoom=1 恢复原始取景。
  * - not visible 时 return null 整体卸载，无需手动 pause()。
  */
 export function MachinePhaseVideo({ phase, visible, isFullscreen }: MachinePhaseVideoProps) {
@@ -56,9 +59,20 @@ export function MachinePhaseVideo({ phase, visible, isFullscreen }: MachinePhase
   if (!visible || phase === "idle" || !mounted) return null;
 
   const src = PHASE_VIDEO[phase];
+  // 取景配置注入为 CSS 变量（styles.css 的 .machine-phase-video video 消费）：
+  // zoom 下限 1，误配 <1 时只会退回原始取景而不会缩小。
+  const framing = PHASE_VIDEO_FRAMING[phase];
+  const framingStyle = {
+    "--phase-video-zoom": String(Math.max(1, framing.zoom)),
+    "--phase-video-origin-x": `${framing.focusX * 100}%`,
+    "--phase-video-origin-y": `${framing.focusY * 100}%`
+  } as CSSProperties;
 
   return (
-    <div className={`machine-phase-video${isFullscreen ? " is-fullscreen" : ""}`}>
+    <div
+      className={`machine-phase-video${isFullscreen ? " is-fullscreen" : ""}`}
+      style={framingStyle}
+    >
       <video
         key={src}
         autoPlay

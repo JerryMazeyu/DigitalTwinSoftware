@@ -2368,7 +2368,7 @@ pre {
   border: 1px solid rgba(114, 214, 201, 0.18);
   border-radius: 8px;
   overflow-y: auto;
-  font-size: 12px;
+  font-size: 14px;
   color: #e9fbf8;
   backdrop-filter: blur(8px);
   min-height: 0;
@@ -2406,7 +2406,7 @@ pre {
 }
 
 .data-panel-header-count {
-  font-size: 10px;
+  font-size: 12px;
   font-style: normal;
   opacity: 0.65;
 }
@@ -2428,7 +2428,7 @@ pre {
   border-radius: 5px;
   border: 1px solid transparent;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 13px;
   font-family: "JetBrains Mono", "Consolas", "Courier New", monospace;
   transition: background 120ms ease, border-color 120ms ease;
 }
@@ -2542,7 +2542,10 @@ pre {
  *      videoWidth/videoHeight 时，把它写到容器 style.aspectRatio，让容
  *      器比例 = 视频原生比，视频自然撑满容器。
  *   2. <video> 用 object-fit: contain 做兜底——即使容器比例与视频略不
- *      一致，视频按比例适配留黑边，绝不拉伸裁剪。 */
+ *      一致，视频按比例适配留黑边，绝不拉伸裁剪。
+ *   3. 取景裁剪放大：PHASE_VIDEO_FRAMING（machinePhase.ts）配置的等比
+ *      scale 叠加在 contain 之上，溢出由容器 overflow: hidden 裁掉——
+ *      裁剪而非拉伸，宽高比不变；zoom=1（或变量未注入）恢复原始取景。 */
 .machine-phase-video {
   position: absolute;
   inset: 0;
@@ -2550,8 +2553,8 @@ pre {
   align-items: center;
   justify-content: center;
   /* 非全屏下：高度由 .machine-canvas-grid 第 1 行 1fr 决定 = 右侧
-     数据面板高度；视频用 object-fit: contain 保持原生比 + 不裁切，
-     不再写 aspect-ratio 反推高度（避免溢出主格）。 */
+     数据面板高度；视频用 object-fit: contain 保持原生比，等比放大后
+     由 overflow: hidden 裁剪，不写 aspect-ratio 反推高度（避免溢出主格）。 */
   background: rgba(8, 14, 22, 0.85);
   border: 1px solid rgba(149, 200, 215, 0.35);
   border-radius: 12px;
@@ -2571,4 +2574,9 @@ pre {
   height: 100%;
   object-fit: contain;
   display: block;
+  /* 在 contain 基线上整体等比放大：溢出由容器 overflow: hidden 裁掉，
+     裁剪而非拉伸，宽高比不变。变量由 MachinePhaseVideo 按
+     PHASE_VIDEO_FRAMING 配置注入；未注入（zoom 缺省 1）恢复原始取景。 */
+  transform: scale(var(--phase-video-zoom, 1));
+  transform-origin: var(--phase-video-origin-x, 50%) var(--phase-video-origin-y, 50%);
 }
