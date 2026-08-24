@@ -92,14 +92,14 @@ export const LOCATIONS: Record<string, AnchorWorldPosition> = {
 };
 
 // ---------- Sputter power actuals (6) ----------
-// 溅射电源 1–6 实际功率——分别对应6个腔室
+// 溅射电源 1–6 功率——分别对应6个腔室
 const sputter: PlcAnchorConfigEntry[] = [
-  { plcSymbol: "dbHtg_fPower_Actual[0]", partId: "PowerSupply_SP1", categoryEn: "SputterPowerActual", cnName: "溅射电源1实际功率", worldPosition: LOCATIONS.CENTER_LOW, defaultVisible: true },
-  { plcSymbol: "dbHtg_fPower_Actual[1]", partId: "PowerSupply_SP2", categoryEn: "SputterPowerActual", cnName: "溅射电源2实际功率", worldPosition: LOCATIONS.CENTER_BOTTOM, defaultVisible: true },
-  { plcSymbol: "dbHtg_fPower_Actual[2]", partId: "PowerSupply_SP3", categoryEn: "SputterPowerActual", cnName: "溅射电源3实际功率", worldPosition: LOCATIONS.CENTER_RIGHT_BOTTOM, defaultVisible: true },
-  { plcSymbol: "dbHtg_fPower_Actual[3]", partId: "PowerSupply_SP4", categoryEn: "SputterPowerActual", cnName: "溅射电源4实际功率", worldPosition: LOCATIONS.CENTER_RIGHT_MID, defaultVisible: true },
-  { plcSymbol: "dbHtg_fPower_Actual[4]", partId: "PowerSupply_SP5", categoryEn: "SputterPowerActual", cnName: "溅射电源5实际功率", worldPosition: LOCATIONS.CENTER_RIGHT_HIGH, defaultVisible: true },
-  { plcSymbol: "dbHtg_fPower_Actual[5]", partId: "PowerSupply_SP6", categoryEn: "SputterPowerActual", cnName: "溅射电源6实际功率", worldPosition: LOCATIONS.CENTER_HIGH, defaultVisible: true }
+  { plcSymbol: "dbHtg_fPower_Actual[0]", partId: "PowerSupply_SP1", categoryEn: "SputterPowerActual", cnName: "溅射电源1功率", worldPosition: LOCATIONS.CENTER_LOW, defaultVisible: true },
+  { plcSymbol: "dbHtg_fPower_Actual[1]", partId: "PowerSupply_SP2", categoryEn: "SputterPowerActual", cnName: "溅射电源2功率", worldPosition: LOCATIONS.CENTER_BOTTOM, defaultVisible: true },
+  { plcSymbol: "dbHtg_fPower_Actual[2]", partId: "PowerSupply_SP3", categoryEn: "SputterPowerActual", cnName: "溅射电源3功率", worldPosition: LOCATIONS.CENTER_RIGHT_BOTTOM, defaultVisible: true },
+  { plcSymbol: "dbHtg_fPower_Actual[3]", partId: "PowerSupply_SP4", categoryEn: "SputterPowerActual", cnName: "溅射电源4功率", worldPosition: LOCATIONS.CENTER_RIGHT_MID, defaultVisible: true },
+  { plcSymbol: "dbHtg_fPower_Actual[4]", partId: "PowerSupply_SP5", categoryEn: "SputterPowerActual", cnName: "溅射电源5功率", worldPosition: LOCATIONS.CENTER_RIGHT_HIGH, defaultVisible: true },
+  { plcSymbol: "dbHtg_fPower_Actual[5]", partId: "PowerSupply_SP6", categoryEn: "SputterPowerActual", cnName: "溅射电源6功率", worldPosition: LOCATIONS.CENTER_HIGH, defaultVisible: true }
 ];
 
 // ---------- Winding actuals (11) ----------
@@ -107,29 +107,29 @@ const sputter: PlcAnchorConfigEntry[] = [
 // 分布，Z 靠近模型前方，让标签浮在辊轮上方。
 const winding: PlcAnchorConfigEntry[] = [
   // 卷绕轴速度：5 个轴速度（5 个滚子），数据坐标一致
-  { plcSymbol: "HMI_Act_Vel_Axis_1", partId: "Axis_1", categoryEn: "WindingActual", cnName: "卷绕轴1实际速度", worldPosition: LOCATIONS.AXIS_1, defaultVisible: true },
+  { plcSymbol: "HMI_Act_Vel_Axis_1", partId: "Axis_1", categoryEn: "WindingActual", cnName: "卷绕轴1速度", worldPosition: LOCATIONS.AXIS_1, defaultVisible: true },
   // 共享 LEFT_END：轴2 + 张力1 + 收卷半径（用户说明 "和A2数据坐标一致"）
-  { plcSymbol: "HMI_Act_Vel_Axis_2", partId: "Axis_2", categoryEn: "WindingActual", cnName: "卷绕轴2实际速度", worldPosition: LOCATIONS.LEFT_END, defaultVisible: true },
+  { plcSymbol: "HMI_Act_Vel_Axis_2", partId: "Axis_2", categoryEn: "WindingActual", cnName: "卷绕轴2速度", worldPosition: LOCATIONS.LEFT_END, defaultVisible: true },
   // 共享 RIGHT_END：轴3 + 张力2 + 放卷半径（"和A3数据坐标一致"）
-  { plcSymbol: "HMI_Act_Vel_Axis_3", partId: "Axis_3", categoryEn: "WindingActual", cnName: "卷绕轴3实际速度", worldPosition: LOCATIONS.RIGHT_END, defaultVisible: true },
+  { plcSymbol: "HMI_Act_Vel_Axis_3", partId: "Axis_3", categoryEn: "WindingActual", cnName: "卷绕轴3速度", worldPosition: LOCATIONS.RIGHT_END, defaultVisible: true },
   // 共享 MID_LEFT_TOP：轴4 + 张力3
-  { plcSymbol: "HMI_Act_Vel_Axis_4", partId: "Axis_4", categoryEn: "WindingActual", cnName: "卷绕轴4实际速度", worldPosition: LOCATIONS.MID_LEFT_TOP, defaultVisible: true },
+  { plcSymbol: "HMI_Act_Vel_Axis_4", partId: "Axis_4", categoryEn: "WindingActual", cnName: "卷绕轴4速度", worldPosition: LOCATIONS.MID_LEFT_TOP, defaultVisible: true },
   // 共享 MID_RIGHT_TOP：轴5 + 张力4
-  { plcSymbol: "HMI_Act_Vel_Axis_5", partId: "Axis_5", categoryEn: "WindingActual", cnName: "卷绕轴5实际速度", worldPosition: LOCATIONS.MID_RIGHT_TOP, defaultVisible: true },
+  { plcSymbol: "HMI_Act_Vel_Axis_5", partId: "Axis_5", categoryEn: "WindingActual", cnName: "卷绕轴5速度", worldPosition: LOCATIONS.MID_RIGHT_TOP, defaultVisible: true },
   // 张力（前侧，Y 较低让标签贴在膜上）
   // 共享 LEFT_END：与轴2同坐标
-  { plcSymbol: "Tension_1", partId: "Roller_TensionFro", categoryEn: "WindingActual", cnName: "张力1实际值", worldPosition: LOCATIONS.LEFT_END, defaultVisible: true },
+  { plcSymbol: "Tension_1", partId: "Roller_TensionFro", categoryEn: "WindingActual", cnName: "张力1值", worldPosition: LOCATIONS.LEFT_END, defaultVisible: true },
   // 共享 RIGHT_END：与轴3同坐标
-  { plcSymbol: "Tension_2", partId: "Roller_TensionFro_2", categoryEn: "WindingActual", cnName: "张力2实际值", worldPosition: LOCATIONS.RIGHT_END, defaultVisible: true },
+  { plcSymbol: "Tension_2", partId: "Roller_TensionFro_2", categoryEn: "WindingActual", cnName: "张力2值", worldPosition: LOCATIONS.RIGHT_END, defaultVisible: true },
   // 共享 MID_LEFT_TOP：与轴4同坐标
-  { plcSymbol: "Tension_3", partId: "Roller_TensionBak", categoryEn: "WindingActual", cnName: "张力3实际值", worldPosition: LOCATIONS.MID_LEFT_TOP, defaultVisible: true },
+  { plcSymbol: "Tension_3", partId: "Roller_TensionBak", categoryEn: "WindingActual", cnName: "张力3值", worldPosition: LOCATIONS.MID_LEFT_TOP, defaultVisible: true },
   // 共享 MID_RIGHT_TOP：与轴5同坐标
-  { plcSymbol: "Tension_4", partId: "Roller_TensionBak_2", categoryEn: "WindingActual", cnName: "张力4实际值", worldPosition: LOCATIONS.MID_RIGHT_TOP, defaultVisible: true},
+  { plcSymbol: "Tension_4", partId: "Roller_TensionBak_2", categoryEn: "WindingActual", cnName: "张力4值", worldPosition: LOCATIONS.MID_RIGHT_TOP, defaultVisible: true},
   // 半径（卷筒，位于两端）
   // 共享 LEFT_END：与轴2同坐标
-  { plcSymbol: "HMI_Act_Wind_R",   partId: "Roller_Wind",   categoryEn: "WindingActual", cnName: "收卷半径实际值", worldPosition: LOCATIONS.LEFT_END, defaultVisible: true },
+  { plcSymbol: "HMI_Act_Wind_R",   partId: "Roller_Wind",   categoryEn: "WindingActual", cnName: "收卷半径值", worldPosition: LOCATIONS.LEFT_END, defaultVisible: true },
   // 共享 RIGHT_END：与轴3同坐标
-  { plcSymbol: "HMI_Act_Unwind_R", partId: "Roller_Unwind", categoryEn: "WindingActual", cnName: "放卷半径实际值", worldPosition: LOCATIONS.RIGHT_END, defaultVisible: true }
+  { plcSymbol: "HMI_Act_Unwind_R", partId: "Roller_Unwind", categoryEn: "WindingActual", cnName: "放卷半径值", worldPosition: LOCATIONS.RIGHT_END, defaultVisible: true }
 ];
 
 // ---------- Ion source actuals (2) ----------
