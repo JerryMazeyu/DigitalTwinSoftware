@@ -169,8 +169,12 @@ function FreeCameraControls({
       controls.current.zoomSpeed = 0.9;
       controls.current.panSpeed = 0.45;
       controls.current.minDistance = 2.4;
-      // 全屏下放大 zoom 上限，让用户能拉到更远继续看缩放后的模型
-      controls.current.maxDistance = isFullscreen ? 28 : 9.2;
+      // 全屏下放大 zoom 上限，让用户能拉到更远继续看缩放后的模型。
+      // 非全屏上限必须 ≥ 初始距离 12：OrbitControls.update() 会把距离
+      // clamp 到 maxDistance，上限低于初始值时首次滚轮就会把相机从 12
+      // 猛拉到上限处，模型瞬间放大、边缘被裁出视野（eb6a6ac 把初始位置
+      // 从 9 拉到 12 时曾遗漏这里）。
+      controls.current.maxDistance = isFullscreen ? 28 : 14;
       controls.current.minPolarAngle = Math.PI / 3.2;
       controls.current.maxPolarAngle = Math.PI / 2.04;
       controls.current.minAzimuthAngle = -Math.PI / 2.6;
@@ -576,7 +580,9 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, latestJob, 
 
   const [layerPanelOpen, setLayerPanelOpen] = useState(false);
   const [visibleLayerIds, setVisibleLayerIds] = useState<CoaterModelLayerId[]>(() => createAllLayerSelection());
-  const [coaterScene, setCoaterScene] = useState<THREE.Object3D | null>(null);
+  // coaterScene 暂无读取方（图层切换停用）——保留 setter 接线，待图层
+  // 映射恢复后改回 `const [coaterScene, setCoaterScene]` 即可。
+  const [, setCoaterScene] = useState<THREE.Object3D | null>(null);
 
   // ----- 3D 锚点面板接线 -----
   const metaBySymbol = useMemo(
