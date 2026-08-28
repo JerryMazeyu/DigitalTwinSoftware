@@ -23,7 +23,7 @@ import { ClusterDataPanel } from "./sensorBoard/ClusterDataPanel";
 import { usePlcSensors } from "../hooks/usePlcSensors";
 import { useIdleTimer } from "../hooks/useIdleTimer";
 import { PLC_ANCHOR_CONFIG } from "../data/plcAnchorConfig";
-import { MACHINE_PHASE_OVERRIDE, PHASE_LABEL, type MachinePhase } from "../domain/machinePhase";
+import { MACHINE_PHASE_OVERRIDE, coatingSignature, phaseDisplayLabel, selectPhaseVideo } from "../domain/machinePhase";
 import { clusterAnchorsByPosition, type AnchorCluster } from "../data/plcAnchorClusters";
 import { PLC_SENSOR_META } from "../data/plcSensorMap";
 import { CHAMBERS, CHAMBER_PRIMARY_SYMBOL, CHAMBER_SYMBOLS, type ChamberId } from "../data/chambers";
@@ -100,10 +100,16 @@ class ModelErrorBoundary extends Component<PropsWithChildren<{ fallback: ReactNo
  * 态）各放一份，复用同一份样式与数据来源——确保两种模式下用户看到的
  * 相位提示完全一致。`floating` 修饰类把徽章改成绝对定位、浮在画布上。
  * 逻辑：`MACHINE_PHASE_OVERRIDE` 激活时切到黄色警示样式，否则是低调实时相位。
+ * label 由调用方用 phaseDisplayLabel 派生（镀膜态动态拼接活跃电源集，
+ * 如「镀膜·1+4」，未知组合同样显示真实状态）。
  */
-function PhaseBadge({ phase, floating = false }: { phase: MachinePhase; floating?: boolean }) {
-  const phaseLabel = PHASE_LABEL[phase];
+function PhaseBadge({ label, floating = false }: { label: string; floating?: boolean }) {
   const isOverride = MACHINE_PHASE_OVERRIDE !== null;
+  // override 钉住了镀膜子状态时在提示里带上电源集，调试时一眼可见当前钉的是什么。
+  const overridePowers = MACHINE_PHASE_OVERRIDE?.phase === "pump+winding+coating"
+    ? MACHINE_PHASE_OVERRIDE.coatingPowers
+    : null;
+  const overrideDetail = overridePowers ? `（钉住电源 ${coatingSignature(overridePowers)}）` : "";
   const className = [
     "phase-badge",
     isOverride ? "is-override" : "",
@@ -116,7 +122,7 @@ function PhaseBadge({ phase, floating = false }: { phase: MachinePhase; floating
       aria-live="polite"
       title={
         isOverride
-          ? `当前相位被 VITE_MACHINE_PHASE=${MACHINE_PHASE_OVERRIDE} 强制覆盖——这不是真实 PLC 数据`
+          ? `当前相位被 VITE_MACHINE_PHASE 强制覆盖${overrideDetail}——这不是真实 PLC 数据`
           : "实时相位判定（来自 PLC 实时值）"
       }
     >
@@ -125,10 +131,10 @@ function PhaseBadge({ phase, floating = false }: { phase: MachinePhase; floating
         {isOverride ? (
           <>
             <strong>调试覆盖</strong>
-            <em> · 当前相位：「{phaseLabel}」（非真实 PLC 数据）</em>
+            <em> · 当前相位：「{label}」（非真实 PLC 数据）</em>
           </>
         ) : (
-          <>实时相位：{phaseLabel}</>
+          <>实时相位：{label}</>
         )}
       </span>
     </div>
@@ -701,10 +707,15 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, latestJob, 
   // 键盘 / 滚轮事件都会立即打断并从头重新计时。
   const idle = useIdleTimer(15000);
 
-  const phase = useMemo(
-    () => classifyMachinePhase(valuesFromSymbolMaps(phaseLive.bySymbol)),
+  // PLC 值摊平一次复用：相位判定、视频子状态选择、徽章文案共用同一份快照，
+  // 保证三者在同一轮询周期内完全一致。
+  const phaseValues = useMemo(
+    () => valuesFromSymbolMaps(phaseLive.bySymbol),
     [phaseLive.bySymbol]
   );
+  const phase = useMemo(() => classifyMachinePhase(phaseValues), [phaseValues]);
+  const phaseVideo = useMemo(() => selectPhaseVideo(phase, phaseValues), [phase, phaseValues]);
+  const phaseLabel = useMemo(() => phaseDisplayLabel(phase, phaseValues), [phase, phaseValues]);
 
   return (
     <section className={compact ? "panel machine-panel machine-panel-fill" : "panel machine-panel"} aria-label="镀膜机三维数字孪生">
@@ -712,7 +723,7 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, latestJob, 
         <div>
           <h2>镀膜机 3D 数字孪生</h2>
         </div>
-        <PhaseBadge phase={phase} />
+        <PhaseBadge label={phaseLabel} />
         <span className={`risk-chip risk-${riskLevel}`}>
           {machine.status === "control-pending" ? "只读监控" : "设备联动"}
         </span>
@@ -847,8 +858,8 @@ export function TwinMachine3D({ machine, riskLevel, health: _health, latestJob, 
               </div>
             )}
           </div>
-          <MachinePhaseVideo phase={phase} visible={idle} isFullscreen={isFullscreen} />
-          {isFullscreen && <PhaseBadge phase={phase} floating />}
+          <MachinePhaseVideo video={phaseVideo} visible={idle} isFullscreen={isFullscreen} />
+          {isFullscreen && <PhaseBadge label={phaseLabel} floating />}
           <Canvas camera={{ position: DEFAULT_CAMERA_POSITION, fov: 30 }} shadows>
             <FreeCameraControls isFullscreen={isFullscreen} idle={idle} />
             <ModelErrorBoundary fallback={<MachineScene machine={machine} riskLevel={riskLevel} />}>

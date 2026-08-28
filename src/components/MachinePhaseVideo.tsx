@@ -1,9 +1,13 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { PHASE_VIDEO, PHASE_VIDEO_FRAMING, type MachinePhase } from "../domain/machinePhase";
+import { PHASE_VIDEO_FRAMING, type PhaseVideoSelection } from "../domain/machinePhase";
 
 type MachinePhaseVideoProps = {
-  /** 当前机器运行相位（由 PLC 实时值判定）。 */
-  phase: MachinePhase;
+  /**
+   * 要播放的视频（由 selectPhaseVideo 从相位 + PLC 功率推导）。
+   * null = 无可播素材（闲置 / 未知镀膜电源组合）→ 整体不挂载，露出背后
+   * 3D 模型。挂载延迟计时不受影响：null → 有素材的切换是即时的。
+   */
+  video: PhaseVideoSelection | null;
   /** 是否处于空闲期：false 时不挂载，<video> 卸载即停止并释放资源。 */
   visible: boolean;
   /**
@@ -22,12 +26,12 @@ const VIDEO_MOUNT_DELAY_DEFAULT_MS = 1200;
 const VIDEO_MOUNT_DELAY_FULLSCREEN_MS = 1800;
 
 /**
- * 空闲期的机器状态视频轮播面板：覆盖 3D 镀膜机显示区域（数据面板在
- * 父容器的兄弟节点，天然不遮），按运行相位循环播放对应素材。
- * 闲置（idle）不播视频。
+ * 空闲期的机器状态视频面板：覆盖 3D 镀膜机显示区域（数据面板在
+ * 父容器的兄弟节点，天然不遮），按运行相位（镀膜态再按活跃电源子状态）
+ * 播放对应素材。闲置（idle）不播视频。
  *
  * 要点：
- * - `key={src}` 强制重挂载：相位切换时从头加载并重新触发 autoplay，
+ * - `key={video.src}` 强制重挂载：视频切换时从头加载并重新触发 autoplay，
  *   优于直接改 <video src>（后者可能停留旧进度）。
  * - autoplay 必须 muted：muted 是浏览器免手势自动播放的唯一条件。
  * - 容器尺寸：
@@ -39,9 +43,11 @@ const VIDEO_MOUNT_DELAY_FULLSCREEN_MS = 1800;
  * - 取景裁剪：录制角度导致设备占比偏小，按 PHASE_VIDEO_FRAMING 配置
  *   在 contain 基线上等比 scale 放大（裁剪而非拉伸），通过容器 CSS
  *   变量下发，非全屏 / 全屏行为一致。zoom=1 恢复原始取景。
+ * - video 为 null（未知镀膜组合）时整体不挂载；mounted 计时不受影响
+ *   （effect 只依赖 visible / isFullscreen），素材恢复后无需重新等待延迟。
  * - not visible 时 return null 整体卸载，无需手动 pause()。
  */
-export function MachinePhaseVideo({ phase, visible, isFullscreen }: MachinePhaseVideoProps) {
+export function MachinePhaseVideo({ video, visible, isFullscreen }: MachinePhaseVideoProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -56,12 +62,11 @@ export function MachinePhaseVideo({ phase, visible, isFullscreen }: MachinePhase
     return () => window.clearTimeout(id);
   }, [visible, isFullscreen]);
 
-  if (!visible || phase === "idle" || !mounted) return null;
+  if (!visible || !video || !mounted) return null;
 
-  const src = PHASE_VIDEO[phase];
   // 取景配置注入为 CSS 变量（styles.css 的 .machine-phase-video video 消费）：
   // zoom 下限 1，误配 <1 时只会退回原始取景而不会缩小。
-  const framing = PHASE_VIDEO_FRAMING[phase];
+  const framing = PHASE_VIDEO_FRAMING[video.phase];
   const framingStyle = {
     "--phase-video-zoom": String(Math.max(1, framing.zoom)),
     "--phase-video-origin-x": `${framing.focusX * 100}%`,
@@ -74,7 +79,7 @@ export function MachinePhaseVideo({ phase, visible, isFullscreen }: MachinePhase
       style={framingStyle}
     >
       <video
-        key={src}
+        key={video.src}
         autoPlay
         muted
         loop
@@ -95,7 +100,7 @@ export function MachinePhaseVideo({ phase, visible, isFullscreen }: MachinePhase
           e.currentTarget.play().catch(() => {});
         }}
       >
-        <source src={src} type="video/mp4" />
+        <source src={video.src} type="video/mp4" />
       </video>
     </div>
   );
